@@ -1,0 +1,7 @@
+[Unit]
+Description=DoW2 web databases -> R2 backup
+[Service]
+Type=oneshot
+Nice=10
+IOSchedulingClass=idle
+ExecStart=/usr/local/bin/dow2-db-backup
