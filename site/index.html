@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="/elite/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Elite Mod Launcher — demo</title>
+<meta name="description" content="Demo landing page for the Elite Mod launcher for Dawn of War II: Retribution. Not an official Elite Mod site.">
+<style>
+@font-face { font-family: Cinzel; src: url(fonts/cinzel-700.ttf); font-weight: 700; font-display: swap; }
+@font-face { font-family: Cinzel; src: url(fonts/cinzel-900.ttf); font-weight: 900; font-display: swap; }
+@font-face { font-family: CinzelCyr; src: url(fonts/cormorantsc-cyr-700.ttf); font-weight: 700 900; unicode-range: U+0400-045F, U+0490-0491, U+2116; font-display: swap; }
+@font-face { font-family: Spectral; src: url(fonts/spectral-400.ttf); font-weight: 400; font-display: swap; }
+@font-face { font-family: Spectral; src: url(fonts/spectral-600.ttf); font-weight: 600; font-display: swap; }
+:root {
+  --bg: #0d0b09; --panel: #16130f; --line: #3a3124; --gold: #d9b25f; --gold-2: #f0d48f;
+  --text: #e6dccb; --muted: #a39782; --red: #9e1b1b; --red-2: #c42a24; --demo: #e0a526;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 18px/1.6 Spectral, Georgia, serif; }
+a { color: var(--gold); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+/* demo plate */
+.demo-bar { position: sticky; top: 0; z-index: 50; background: repeating-linear-gradient(-45deg, #2a1d05 0 14px, #231804 14px 28px);
+  border-bottom: 2px solid var(--demo); color: #f6e2b0; font-size: 15px; }
+.demo-bar .wrap { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; padding-top: 9px; padding-bottom: 9px; text-align: center; }
+.demo-tag { font: 900 13px Cinzel, CinzelCyr, serif; letter-spacing: .18em; background: var(--demo); color: #1a1205; padding: 3px 10px; border-radius: 2px; }
+.demo-bar a { color: #ffd77a; font-weight: 600; }
+.ribbon { position: fixed; z-index: 60; top: 26px; right: -58px; transform: rotate(45deg); background: var(--demo); color: #1a1205;
+  font: 900 14px Cinzel, CinzelCyr, serif; letter-spacing: .25em; padding: 6px 70px; box-shadow: 0 2px 10px #0008; pointer-events: none; }
+
+/* hero */
+.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line);
+  background: radial-gradient(ellipse at 50% 0%, #3b130f 0%, #1a0d09 45%, var(--bg) 80%); }
+.hero::after { content: ""; position: absolute; inset: 0; background: url(img/race_sm.png) no-repeat 6% 70% / 160px, url(img/race_chaos.png) no-repeat 94% 30% / 150px;
+  opacity: .07; pointer-events: none; }
+.hero .wrap { position: relative; z-index: 1; padding-top: 70px; padding-bottom: 60px; text-align: center; }
+.kicker { font: 700 14px Cinzel, CinzelCyr, serif; letter-spacing: .35em; color: var(--red-2); text-transform: uppercase; }
+h1 { font: 900 clamp(46px, 9vw, 96px)/1 Cinzel, CinzelCyr, serif; margin: 14px 0 10px; color: var(--gold);
+  text-shadow: 0 2px 0 #5a3f12, 0 0 40px #d9b25f33; letter-spacing: .04em; }
+.lead { font-size: clamp(19px, 2.4vw, 24px); color: var(--text); max-width: 760px; margin: 0 auto 34px; }
+.dl-main { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #fff3df;
+  background: linear-gradient(#c42a24, #8a1414); border: 1px solid #e8574d; border-radius: 4px;
+  padding: 24px 54px; min-width: min(560px, 100%); box-shadow: 0 0 0 4px #00000066, 0 12px 40px #c42a2455, inset 0 1px 0 #ff9a8f66;
+  transition: transform .12s, box-shadow .12s; }
+.dl-main:hover { transform: translateY(-2px); box-shadow: 0 0 0 4px #00000066, 0 16px 50px #c42a2488, inset 0 1px 0 #ff9a8f66; }
+.dl-main b { font: 900 clamp(22px, 3.6vw, 34px) Cinzel, CinzelCyr, serif; letter-spacing: .08em; }
+.dl-main span { font-size: 15px; color: #ffd9cf; }
+.dl-alt { margin-top: 18px; font-size: 15px; color: var(--muted); }
+.dl-alt a { margin: 0 6px; white-space: nowrap; }
+
+.live { position: relative; display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 4px auto 18px;
+  padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 14px; color: var(--muted); cursor: default; }
+.live b { color: var(--gold-2); font-variant-numeric: tabular-nums; }
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; display: inline-block; margin-right: 6px; box-shadow: 0 0 6px #4caf50; }
+.live-pop { display: none; position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 20; width: min(420px, 92vw);
+  text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; box-shadow: 0 10px 30px #000a; color: var(--text); }
+.live:hover .live-pop, .live.open .live-pop { display: block; }
+.live-pop h4 { margin: 8px 0 4px; font: 700 13px Cinzel, CinzelCyr, serif; color: var(--gold); letter-spacing: .05em; }
+.live-pop h4:first-child { margin-top: 0; }
+.live-pop div { font-size: 13px; padding: 2px 0; } .live-pop small { color: var(--muted); }
+.req { margin-top: 10px; font-size: 14px; color: var(--muted); }
+.ostabs { display: flex; width: max-content; max-width: 100%; margin: 0 auto 14px; border: 1px solid #5a4a2e; border-radius: 4px; overflow: hidden; background: #0e0c09; }
+.ostabs button { font: 700 15px Cinzel, CinzelCyr, serif; letter-spacing: .06em; color: var(--muted); background: none; border: 0; padding: 10px 22px; cursor: pointer; }
+.ostabs button + button { border-left: 1px solid #3a3124; }
+.ostabs button:hover { color: var(--gold-2); }
+.ostabs button.on { background: linear-gradient(#3a2a12, #22190c); color: var(--gold-2); box-shadow: inset 0 -2px 0 var(--gold); }
+.os-only { display: none; }
+.os-only.show { display: inline; }
+.langs { display: inline-flex; gap: 2px; margin-left: 6px; }
+.langs a { font: 700 12px Cinzel, CinzelCyr, serif; letter-spacing: .08em; padding: 3px 7px; border: 1px solid #6b5420; color: #f6e2b0 !important; cursor: pointer; text-decoration: none; }
+.langs a.on { background: var(--demo); color: #1a1205 !important; border-color: var(--demo); }
+
+/* sections */
+section { padding: 70px 0; border-bottom: 1px solid var(--line); }
+h2 { font: 700 clamp(26px, 4vw, 38px) Cinzel, CinzelCyr, serif; color: var(--gold); text-align: center; margin: 0 0 12px; letter-spacing: .05em; }
+.sub { text-align: center; color: var(--muted); max-width: 720px; margin: 0 auto 40px; }
+.shot { display: block; max-width: 100%; margin: 0 auto; border: 1px solid #5a4a2e; border-radius: 4px; box-shadow: 0 30px 80px #000c, 0 0 0 6px #0008; }
+.shots { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.shots figure { margin: 0; }
+.shots figcaption { text-align: center; font-size: 15px; color: var(--muted); margin-top: 10px; }
+
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: s; }
+.step { background: var(--panel); border: 1px solid var(--line); padding: 26px 24px; position: relative; }
+.step::before { counter-increment: s; content: counter(s); position: absolute; top: -18px; left: 22px; width: 36px; height: 36px;
+  display: grid; place-items: center; font: 900 18px Cinzel, CinzelCyr, serif; color: #1a1205; background: var(--gold); border-radius: 50%; }
+.step h3, .feat h3 { font: 700 19px Cinzel, CinzelCyr, serif; color: var(--gold-2); margin: 6px 0 8px; letter-spacing: .03em; }
+.step p, .feat p { margin: 0; color: var(--text); font-size: 17px; }
+
+.feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.feat { background: linear-gradient(#1a1611, #13100c); border: 1px solid var(--line); padding: 22px; }
+.feat .ic { font-size: 26px; line-height: 1; }
+
+.stream { display: grid; grid-template-columns: 1.1fr 1fr; gap: 34px; align-items: center; }
+.stream ul { padding-left: 22px; margin: 0; }
+.stream li { margin: 6px 0; }
+.code { font: 15px/1.5 ui-monospace, Consolas, monospace; background: #0a0907; border: 1px solid var(--line); padding: 16px 18px; color: #e9d7a8; overflow-x: auto; }
+
+.news { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.news article { background: var(--panel); border: 1px solid var(--line); padding: 22px; }
+.news time { font-size: 14px; color: var(--muted); }
+.news h3 { font: 700 19px Cinzel, CinzelCyr, serif; color: var(--gold-2); margin: 4px 0 6px; }
+.news a { font-size: 15px; }
+
+.races { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 34px; opacity: .8; }
+.races img { width: 46px; height: 46px; filter: grayscale(.3) drop-shadow(0 2px 4px #000); }
+
+.cta { text-align: center; }
+.labbar { display: inline-block; margin-top: 18px; font-size: 16px; color: var(--muted); }
+.labbar a { color: var(--gold-2); font-weight: 600; }
+.lab { text-align: center; }
+.lab .labcards { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 18px 0 24px; }
+.lab .labcards span { border: 1px solid var(--line); background: #15110d; padding: 8px 14px; font-size: 16px; }
+.lab .labbtn { display: inline-block; text-decoration: none; padding: 12px 26px; border: 1px solid var(--gold); color: var(--gold-2); font: 700 18px Cinzel, CinzelCyr, serif; letter-spacing: .06em; }
+.lab .labbtn:hover { background: #2a2014; }
+footer { padding: 40px 0 60px; color: var(--muted); font-size: 15px; text-align: center; }
+footer .links { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; margin-bottom: 18px; font-size: 17px; }
+
+@media (max-width: 860px) {
+  .steps, .feats, .news, .shots, .stream { grid-template-columns: 1fr; }
+  .ribbon { display: none; }
+  .dl-main { padding: 20px 22px; }
+  section { padding: 50px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="demo-bar"><div class="wrap">
+  <span class="demo-tag">DEMO</span>
+  <span><span data-i="demo">Concept page, just an example — <b>not an official Elite Mod site</b>. The real thing:</span>
+    <a href="https://www.moddb.com/mods/dawn-of-war-2-retribution-elite-mod" target="_blank" rel="noopener">ModDB</a> ·
+    <a href="https://discord.gg/elitemod" target="_blank" rel="noopener">Elite Discord</a></span>
+  <span class="langs" id="langs"><a data-l="en">EN</a><a data-l="ru">RU</a><a data-l="es">ES</a><a data-l="fr">FR</a><a data-l="de">DE</a></span>
+</div></div>
+<div class="ribbon">DEMO</div>
+
+<header class="hero"><div class="wrap">
+  <div class="kicker">Dawn of War II · Retribution</div>
+  <h1>Elite Mod</h1>
+  <p class="lead" data-i="lead">The competitive balance mod for Dawn of War II. One small launcher installs it, keeps it up to date and starts the game — no archives, no manual copying.</p>
+  <div><a class="live" id="live" href="/ladder/" style="text-decoration:none"><span><span class="dot"></span><span data-i="live_ingame">In DoW II now:</span> <b id="lv_game">…</b></span>
+    <span><span data-i="live_launcher">with the launcher:</span> <b id="lv_online">…</b></span>
+    <span>🔎 <span data-i="live_search">searching:</span> <b id="lv_search">…</b></span>
+    <span>⚔ <span data-i="live_play">playing:</span> <b id="lv_play">…</b></span>
+    <span class="live-pop" id="lv_pop"></span></a></div>
+  <div class="ostabs" role="tablist">
+    <button data-os="win" role="tab">Windows</button><button data-os="mac" role="tab">macOS</button><button data-os="linux" role="tab">Linux</button>
+  </div>
+  <a class="dl-main" href="dl/EliteLauncher-1.2.12-setup.exe" data-dl>
+    <b data-i="dl">Download Elite Launcher</b>
+    <span data-dl-sub>for Windows · 2.3 MB installer</span>
+  </a>
+  <div class="dl-alt">
+    <span class="os-only" data-for="win"><span data-i="setup">Without installing (unzip and run):</span> <a href="dl/EliteLauncher-1.2.12-windows-portable.zip" data-dl-portable>EliteLauncher-1.2.12-windows-portable.zip</a> · </span>
+    <span class="os-only" data-for="linux"><span data-i="deb">Also as a .deb package:</span> <a href="dl/elite-launcher_1.2.12_amd64.deb" data-dl-deb>elite-launcher_1.2.12_amd64.deb</a> · </span>
+    <a href="dl/elite-launcher-src-1.2.12.zip" data-i="src" data-dl-src>Source code (MIT)</a>
+  </div>
+  <div class="req" style="color:#e8b04a"><span class="os-only" data-for="win">⚠ <span data-i="notgame">Install or unzip the launcher anywhere EXCEPT the Dawn of War II folder (where DOW2.exe is) — the game may crash otherwise. The launcher finds the game by itself.</span></span></div>
+  <div class="req"><span class="os-only" data-for="mac"><span data-i="req_mac">On a Mac Elite runs through CrossOver or Whisky; the first start of the app: right-click → Open.</span><br></span><span data-i="req">Needs the Steam version of <a href="https://store.steampowered.com/app/56400/" target="_blank" rel="noopener">Dawn of War II: Retribution</a>. The launcher finds it on its own.</span><br><span data-i="langs">Languages:</span> English · Русский · Español · Français · Deutsch</div>
+  <div class="labbar">🧪 <span data-i="lab_bar">Experimental add-ons and tools:</span> <a href="lab/" data-i="lab_a">Elite Lab →</a></div>
+  <div class="labbar" style="display:block;margin-top:6px">🏆 <span data-i="ladder_bar">Ladder: automatch queue, live matches, history and ratings:</span> <a href="/ladder/" data-i="ladder_a">Ladder →</a></div>
+</div></header>
+
+<section><div class="wrap">
+  <h2 data-i="h_two">Two clicks to play</h2>
+  <p class="sub" data-i="s_two">Install once, then just press Play. When a new version comes out, the launcher tells you — and only downloads what changed.</p>
+  <div class="steps">
+    <div class="step"><h3 data-i="st1h">Download the launcher</h3><p data-i="st1p">A small installer for Windows, macOS and Linux.</p></div>
+    <div class="step"><h3 data-i="st2h">Install Elite</h3><p data-i="st2p">It finds Dawn of War II in every Steam library and installs the mod. If the game is missing, it opens the Steam page.</p></div>
+    <div class="step"><h3 data-i="st3h">Play</h3><p data-i="st3p">Big red button. Works offline too — the game always starts, update or not.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 data-i="h_look">What it looks like</h2>
+  <p class="sub" data-i="s_look">Screenshots of the working prototype. News, announcements and versions all come from the Elite team's server.</p>
+  <div class="shots">
+    <figure><img class="shot" src="img/launcher.png" alt="Elite Launcher" loading="lazy"><figcaption data-i="cap1">The main version is marked; beta and archive versions switch in one click</figcaption></figure>
+    <figure><img class="shot" src="img/launcher_update.png" alt="Elite Launcher" loading="lazy"><figcaption data-i="cap2">On the beta: the lobbies' version is one button away, and it is instant</figcaption></figure>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 data-i="h_why">Why a launcher</h2>
+  <p class="sub" data-i="s_why">Everything is prepared on the server. The player's PC doesn't unpack or repack anything.</p>
+  <div class="feats">
+    <div class="feat"><div class="ic">⚡</div><h3 data-i="f1h">Small updates</h3><p data-i="f1p">Files are split into small pieces. A balance patch is megabytes, not the whole multi-gigabyte installer.</p></div>
+    <div class="feat"><div class="ic">▶</div><h3 data-i="f2h">Play is never blocked</h3><p data-i="f2p">A new version is offered with a banner — "the lobbies have already moved to it" — but nobody is forced to wait.</p></div>
+    <div class="feat"><div class="ic">⇄</div><h3 data-i="f3h">Main, beta, archive</h3><p data-i="f3p">The main version is clearly marked. Switch to the public test or any archive version in one click — and back with one button. Versions you already had switch instantly.</p></div>
+    <div class="feat"><div class="ic">🛠</div><h3 data-i="f4h">Repair</h3><p data-i="f4p">Re-checks every file and fixes only the broken ones. Brings back the mod files Steam's "Verify integrity" removes.</p></div>
+    <div class="feat"><div class="ic">📜</div><h3 data-i="f5h">News from the team</h3><p data-i="f5p">Patch notes, tournaments and announcements right on the home screen, with links back to ModDB.</p></div>
+    <div class="feat"><div class="ic">🌍</div><h3 data-i="f6h">Several mirrors</h3><p data-i="f6p">If one host is blocked or slow in a country, the launcher switches to another and resumes the download.</p></div>
+    <div class="feat"><div class="ic">🔏</div><h3 data-i="f7h">Signed files</h3><p data-i="f7p">Every version is signed by the Elite team. A hacked mirror can't push modified files.</p></div>
+    <div class="feat"><div class="ic">🧩</div><h3 data-i="f8h">Add-ons</h3><p data-i="f8p">Optional extras with a checkbox, e.g. Relic rating of every player right in the lobby.</p></div>
+    <div class="feat"><div class="ic">📖</div><h3 data-i="f9h">5 languages, open source</h3><p data-i="f9p">English, Russian, Spanish, French and German. MIT license; Rust + the system web view, about 5 MB on disk.</p></div>
+    <div class="feat"><div class="ic">🚪</div><h3 data-i="f10h">Can be closed</h3><p data-i="f10p">No need to keep the launcher open — it doesn't touch the running game. After installing, the mod works on its own, even if you remove the launcher.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap stream">
+  <div>
+    <h2 style="text-align:left" data-i="h_stream">For streamers and tournaments</h2>
+    <p data-i="p_stream">One link under the stream is enough. A viewer who has never touched mods clicks it, gets the launcher, and is in an Elite lobby a few minutes later.</p>
+    <ul><li data-i="li1">No "download this archive, copy that folder" in chat</li><li data-i="li2">Everyone ends up on the same version as the lobbies</li><li data-i="li3">Downloads are still counted for ModDB — the news and links point there</li></ul>
+  </div>
+  <div class="code" data-i="code">Play Elite Mod with me:<br>https://…/elite/<br><br>1. Download the launcher<br>2. Install Elite<br>3. Play</div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 data-i="h_news">Latest news</h2>
+  <p class="sub" data-i="s_news">From the official ModDB page.</p>
+  <div class="news">
+    <article><time>2026-10-26</time><h3 data-i="n1h">Elite 3.2 is out!</h3><p data-i="n1p">The public-test reworks are now the full release — it is the main version, and the lobbies play on it.</p>
+      <a href="https://www.moddb.com/mods/dawn-of-war-2-retribution-elite-mod/news" target="_blank" rel="noopener" data-i="n1a">Read on ModDB →</a></article>
+    <article><time>2026-08-30</time><h3 data-i="n2h">Elite Mod v3.1 is live</h3><p data-i="n2p">Balance changes across all races, new maps for the 3v3 pool and fixes.</p>
+      <a href="https://www.moddb.com/mods/dawn-of-war-2-retribution-elite-mod" target="_blank" rel="noopener" data-i="n2a">Elite Mod on ModDB →</a></article>
+  </div>
+  <div class="races">
+    <img src="img/race_sm.png" alt="Space Marines"><img src="img/race_ork.png" alt="Orks"><img src="img/race_eldar.png" alt="Eldar">
+    <img src="img/race_tyranid.png" alt="Tyranids"><img src="img/race_chaos.png" alt="Chaos"><img src="img/race_ig.png" alt="Imperial Guard">
+    <img src="img/race_gk.png" alt="Ordo Malleus"><img src="img/race_tau.png" alt="Tau"><img src="img/race_necron.png" alt="Necrons">
+  </div>
+</div></section>
+
+<section class="lab"><div class="wrap">
+  <h2 data-i="lab_h">Elite Lab</h2>
+  <p class="sub" data-i="lab_p">Experiments we test with the community — download them all on one page.</p>
+  <div class="labcards"><span data-i="lab_1">Relic rating in the lobby + host auto-kick</span><span data-i="lab_2">Observer lag and Continue diagnostics</span><span data-i="lab_3">Player stats</span><span data-i="lab_4">Replay analysis</span></div>
+  <a class="labbtn" href="lab/" data-i="lab_btn">Open experiments →</a>
+</div></section>
+
+<section class="cta"><div class="wrap">
+  <h2 data-i="h_ready">Ready?</h2>
+  <p class="sub" data-i="s_ready">Free. Takes a couple of minutes.</p>
+  <a class="dl-main" href="dl/EliteLauncher-1.2.12-setup.exe" data-dl><b data-i="dl">Download Elite Launcher</b><span data-dl-sub>for Windows · 2.3 MB installer</span></a>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="links">
+    <a href="https://www.moddb.com/mods/dawn-of-war-2-retribution-elite-mod" target="_blank" rel="noopener" data-i="ft_moddb">Elite Mod on ModDB</a>
+    <a href="https://discord.gg/elitemod" target="_blank" rel="noopener">Elite Discord</a>
+    <a href="https://rts.fintebtc.de/stats/" target="_blank" rel="noopener" data-i="ft_stats">Player stats</a>
+    <a href="lab/" data-i="ft_lab">Experiments</a>
+    <a href="https://store.steampowered.com/app/56400/" target="_blank" rel="noopener" data-i="ft_steam">DoW II: Retribution on Steam</a>
+  </div>
+  <p data-i="ft">Demo page made by a community member as an example. Elite Mod is made by the Elite team; this page is not affiliated with them.<br>Dawn of War II is a trademark of Games Workshop, Relic Entertainment and SEGA.</p>
+</div></footer>
+
+<script>
+var I18N = {"ru": {"live_ingame": "Сейчас в DoW II:", "live_launcher": "с лаунчером:", "live_search": "ищут:", "live_play": "играют:", "ladder_bar": "Ладдер: очередь автоматча, идущие матчи, история и рейтинг:", "ladder_a": "Ладдер →", "notgame": "Ставьте или распаковывайте лаунчер куда угодно, но НЕ в папку с Dawn of War II (там, где DOW2.exe) — иначе игра может падать. Игру лаунчер найдёт сам.", "demo": "Концепт-страница, просто пример — <b>не официальный сайт Elite Mod</b>. Настоящие:", "lead": "Соревновательный баланс-мод для Dawn of War II. Один маленький лаунчер ставит его, держит в актуальном виде и запускает игру — без архивов и ручного копирования.", "dl": "Скачать Elite Launcher", "sub_win": "для Windows · установщик 2.3 МБ", "sub_linux": "для Linux (AppImage) · 104 МБ · бесплатно", "sub_mac": "для macOS · Intel + Apple Silicon · 5 МБ", "src": "Исходный код (MIT)", "req": "Нужна Steam-версия <a href=\"https://store.steampowered.com/app/56400/\" target=\"_blank\" rel=\"noopener\">Dawn of War II: Retribution</a>. Лаунчер найдёт её сам.", "langs": "Языки:", "h_two": "Два клика до игры", "s_two": "Установили один раз — дальше просто «Играть». Когда выходит новая версия, лаунчер скажет об этом и скачает только изменения.", "st1h": "Скачайте лаунчер", "st1p": "Маленький установщик для Windows, macOS и Linux.", "st2h": "Установите Elite", "st2p": "Он сам найдёт Dawn of War II во всех библиотеках Steam и поставит мод. Если игры нет — откроет её страницу в Steam.", "st3h": "Играйте", "st3p": "Большая красная кнопка. Работает и без интернета — игра запускается всегда, есть обновление или нет.", "h_look": "Как это выглядит", "s_look": "Скриншоты работающего прототипа. Новости, объявления и версии приходят с сервера команды Elite.", "cap1": "Основная версия отмечена; бета и архивные переключаются в один клик", "cap2": "На бете: версия из лобби — в одну кнопку, и мгновенно", "h_why": "Зачем лаунчер", "s_why": "Всё готовится на сервере. На компьютере игрока ничего не распаковывается и не перепаковывается.", "f1h": "Маленькие обновления", "f1p": "Файлы разбиты на маленькие куски. Балансный патч — мегабайты, а не весь многогигабайтный установщик.", "f2h": "Игру ничто не блокирует", "f2p": "Новая версия предлагается баннером — «в лобби уже играют на ней», — но ждать никого не заставляют.", "f3h": "Основная, бета, архив", "f3p": "Основная версия чётко отмечена. Публичный тест или любая архивная версия — в один клик, обратно — одной кнопкой. Уже бывшие у вас версии переключаются мгновенно.", "f4h": "Починка", "f4p": "Перепроверяет все файлы и чинит только испорченные. Возвращает файлы мода, которые удаляет «Проверка целостности» в Steam.", "f5h": "Новости от команды", "f5p": "Патчноуты, турниры и объявления прямо на главном экране, со ссылками на ModDB.", "f6h": "Несколько зеркал", "f6p": "Если в какой-то стране сервер заблокирован или медленный, лаунчер переключится на другой и докачает с места обрыва.", "f7h": "Подписанные файлы", "f7p": "Каждая версия подписана командой Elite. Взломанное зеркало не сможет подсунуть изменённые файлы.", "f8h": "Дополнения", "f8p": "Необязательные дополнения галочкой, например рейтинг Relic каждого игрока прямо в лобби.", "f9h": "5 языков, открытый код", "f9p": "Английский, русский, испанский, французский и немецкий. Лицензия MIT; Rust + системный веб-движок, около 5 МБ на диске.", "h_stream": "Для стримеров и турниров", "p_stream": "Достаточно одной ссылки под стримом. Зритель, который никогда не ставил моды, нажимает её, получает лаунчер — и через несколько минут уже в лобби Elite.", "li1": "Никаких «скачай этот архив, скопируй ту папку» в чате", "li2": "Все оказываются на той же версии, что и лобби", "li3": "Загрузки по-прежнему идут в зачёт ModDB — новости и ссылки ведут туда", "code": "Играй со мной в Elite Mod:<br>https://…/elite/<br><br>1. Скачай лаунчер<br>2. Установи Elite<br>3. Играй", "h_news": "Последние новости", "s_news": "С официальной страницы на ModDB.", "n1h": "Вышла Elite 3.2!", "n1p": "Переработки из публичного теста стали полноценным релизом — это основная версия, на ней играют в лобби.", "n1a": "Читать на ModDB →", "n2h": "Вышел Elite Mod v3.1", "n2p": "Изменения баланса всех рас, новые карты для пула 3×3 и исправления.", "n2a": "Elite Mod на ModDB →", "h_ready": "Готовы?", "s_ready": "Бесплатно. Пара минут.", "ft_moddb": "Elite Mod на ModDB", "ft_stats": "Статистика игроков", "ft_steam": "DoW II: Retribution в Steam", "ft": "Демо-страница, сделанная участником сообщества как пример. Elite Mod делает команда Elite; эта страница с ней не связана.<br>Dawn of War II — товарный знак Games Workshop, Relic Entertainment и SEGA.", "title": "Elite Mod Launcher — демо", "req_mac": "На Mac Elite работает через CrossOver или Whisky; первый запуск приложения — правой кнопкой → «Открыть».", "deb": "Также пакетом .deb:", "setup": "Без установки (распаковать и запустить):", "lab_bar": "Экспериментальные дополнения и инструменты:", "lab_a": "Elite Lab →", "lab_h": "Elite Lab", "lab_p": "Эксперименты, которые мы проверяем вместе с сообществом, — всё скачать на одной странице.", "lab_1": "Рейтинг Relic в лобби + автокик хостом", "lab_2": "Диагностика тормозов обсервера и кнопки Continue", "lab_3": "Статистика игроков", "lab_4": "Разбор реплеев", "lab_btn": "Открыть эксперименты →", "ft_lab": "Эксперименты", "f10h": "Можно закрыть", "f10p": "Держать лаунчер открытым не нужно — на игру он никак не влияет. После установки мод работает сам, даже если удалить лаунчер."}, "es": {"live_ingame": "En DoW II ahora:", "live_launcher": "con el launcher:", "live_search": "buscando:", "live_play": "jugando:", "ladder_bar": "Ladder: cola de emparejamiento, partidas en curso, historial y clasificación:", "ladder_a": "Ladder →", "notgame": "Instala o descomprime el launcher en cualquier carpeta EXCEPTO la de Dawn of War II (donde está DOW2.exe): si no, el juego puede cerrarse. El launcher encuentra el juego solo.", "demo": "Página conceptual, solo un ejemplo: <b>no es un sitio oficial de Elite Mod</b>. Lo oficial:", "lead": "El mod competitivo de equilibrio para Dawn of War II. Un pequeño launcher lo instala, lo mantiene al día y abre el juego, sin archivos comprimidos ni copias manuales.", "dl": "Descargar Elite Launcher", "sub_win": "para Windows · instalador 2,3 MB", "sub_linux": "para Linux (AppImage) · 104 MB · gratis", "sub_mac": "para macOS · Intel + Apple Silicon · 5 MB", "src": "Código fuente (MIT)", "req": "Necesitas la versión de Steam de <a href=\"https://store.steampowered.com/app/56400/\" target=\"_blank\" rel=\"noopener\">Dawn of War II: Retribution</a>. El launcher la encuentra solo.", "langs": "Idiomas:", "h_two": "Dos clics para jugar", "s_two": "Instálalo una vez y luego solo pulsa Jugar. Cuando sale una nueva versión, el launcher te avisa y descarga solo lo que cambió.", "st1h": "Descarga el launcher", "st1p": "Un pequeño instalador para Windows, macOS y Linux.", "st2h": "Instala Elite", "st2p": "Encuentra Dawn of War II en todas tus bibliotecas de Steam e instala el mod. Si no tienes el juego, abre su página en Steam.", "st3h": "Juega", "st3p": "Gran botón rojo. También sin conexión: el juego siempre arranca, haya actualización o no.", "h_look": "Así se ve", "s_look": "Capturas del prototipo funcional. Las noticias, avisos y versiones llegan desde el servidor del equipo de Elite.", "cap1": "La versión principal está marcada; la beta y las archivadas se cambian con un clic", "cap2": "En la beta: la versión de los lobbies está a un botón, y es instantáneo", "h_why": "¿Por qué un launcher?", "s_why": "Todo se prepara en el servidor. El PC del jugador no descomprime ni vuelve a empaquetar nada.", "f1h": "Actualizaciones pequeñas", "f1p": "Los archivos se dividen en trozos pequeños. Un parche de equilibrio pesa megabytes, no todo el instalador de varios gigas.", "f2h": "Nunca bloquea el juego", "f2p": "La nueva versión se ofrece con un aviso («los lobbies ya están en ella»), pero nadie está obligado a esperar.", "f3h": "Principal, beta, archivo", "f3p": "La versión principal está bien marcada. Cambia a la prueba pública o a cualquier versión archivada con un clic, y vuelve con un botón. Las versiones que ya tuviste cambian al instante.", "f4h": "Reparar", "f4p": "Vuelve a comprobar cada archivo y arregla solo los dañados. Recupera los archivos del mod que borra «Verificar integridad» de Steam.", "f5h": "Noticias del equipo", "f5p": "Notas de parche, torneos y anuncios en la pantalla principal, con enlaces a ModDB.", "f6h": "Varios espejos", "f6p": "Si un servidor está bloqueado o va lento en un país, el launcher cambia a otro y reanuda la descarga.", "f7h": "Archivos firmados", "f7p": "Cada versión está firmada por el equipo de Elite. Un espejo hackeado no puede colar archivos modificados.", "f8h": "Complementos", "f8p": "Extras opcionales con una casilla, por ejemplo el rating de Relic de cada jugador en el lobby.", "f9h": "5 idiomas, código abierto", "f9p": "Inglés, ruso, español, francés y alemán. Licencia MIT; Rust + el motor web del sistema, unos 5 MB en disco.", "h_stream": "Para streamers y torneos", "p_stream": "Basta con un enlace bajo el stream. Un espectador que nunca ha usado mods hace clic, recibe el launcher y en pocos minutos está en un lobby de Elite.", "li1": "Nada de «descarga este archivo, copia esa carpeta» en el chat", "li2": "Todos acaban en la misma versión que los lobbies", "li3": "Las descargas siguen contando para ModDB: las noticias y los enlaces llevan allí", "code": "Juega Elite Mod conmigo:<br>https://…/elite/<br><br>1. Descarga el launcher<br>2. Instala Elite<br>3. Juega", "h_news": "Últimas noticias", "s_news": "De la página oficial en ModDB.", "n1h": "¡Ya salió Elite 3.2!", "n1p": "Los cambios de la prueba pública ya son la versión final: es la principal y se juega en los lobbies.", "n1a": "Leer en ModDB →", "n2h": "Elite Mod v3.1 ya está disponible", "n2p": "Cambios de equilibrio en todas las razas, nuevos mapas para el pool 3v3 y correcciones.", "n2a": "Elite Mod en ModDB →", "h_ready": "¿Listo?", "s_ready": "Gratis. Lleva un par de minutos.", "ft_moddb": "Elite Mod en ModDB", "ft_stats": "Estadísticas de jugadores", "ft_steam": "DoW II: Retribution en Steam", "ft": "Página de demostración hecha por un miembro de la comunidad como ejemplo. Elite Mod lo hace el equipo de Elite; esta página no está afiliada a ellos.<br>Dawn of War II es una marca de Games Workshop, Relic Entertainment y SEGA.", "title": "Elite Mod Launcher — demo", "req_mac": "En Mac, Elite funciona con CrossOver o Whisky; la primera vez abre la app con clic derecho → Abrir.", "deb": "También como paquete .deb:", "setup": "Sin instalar (descomprimir y ejecutar):", "lab_bar": "Complementos y herramientas experimentales:", "lab_a": "Elite Lab →", "lab_h": "Elite Lab", "lab_p": "Experimentos que probamos con la comunidad: descárgalos todos en una página.", "lab_1": "Rating de Relic en el lobby + expulsión automática", "lab_2": "Diagnóstico del lag de observador y de Continue", "lab_3": "Estadísticas de jugadores", "lab_4": "Análisis de repeticiones", "lab_btn": "Abrir experimentos →", "ft_lab": "Experimentos", "f10h": "Se puede cerrar", "f10p": "No hace falta mantener el launcher abierto: no afecta al juego. Tras instalar, el mod funciona solo, incluso si borras el launcher."}, "fr": {"live_ingame": "Dans DoW II maintenant :", "live_launcher": "avec le launcher :", "live_search": "en recherche :", "live_play": "en partie :", "ladder_bar": "Ladder : file de matchmaking, parties en cours, historique et classement :", "ladder_a": "Ladder →", "notgame": "Installez ou décompressez le launcher n'importe où SAUF dans le dossier de Dawn of War II (là où se trouve DOW2.exe) — sinon le jeu peut planter. Le launcher trouve le jeu tout seul.", "demo": "Page concept, juste un exemple — <b>pas un site officiel d'Elite Mod</b>. Les vrais :", "lead": "Le mod d'équilibrage compétitif pour Dawn of War II. Un petit launcher l'installe, le tient à jour et lance le jeu — sans archives ni copie à la main.", "dl": "Télécharger Elite Launcher", "sub_win": "pour Windows · installateur 2,3 Mo", "sub_linux": "pour Linux (AppImage) · 104 Mo · gratuit", "sub_mac": "pour macOS · Intel + Apple Silicon · 5 Mo", "src": "Code source (MIT)", "req": "Nécessite la version Steam de <a href=\"https://store.steampowered.com/app/56400/\" target=\"_blank\" rel=\"noopener\">Dawn of War II: Retribution</a>. Le launcher la trouve tout seul.", "langs": "Langues :", "h_two": "Deux clics pour jouer", "s_two": "Installez une fois, puis appuyez simplement sur Jouer. Quand une nouvelle version sort, le launcher vous prévient — et ne télécharge que ce qui a changé.", "st1h": "Téléchargez le launcher", "st1p": "Un petit installateur pour Windows, macOS et Linux.", "st2h": "Installez Elite", "st2p": "Il trouve Dawn of War II dans toutes vos bibliothèques Steam et installe le mod. Si le jeu manque, il ouvre sa page Steam.", "st3h": "Jouez", "st3p": "Le grand bouton rouge. Marche aussi hors ligne — le jeu démarre toujours, mise à jour ou pas.", "h_look": "À quoi ça ressemble", "s_look": "Captures du prototype fonctionnel. Actualités, annonces et versions viennent du serveur de l'équipe Elite.", "cap1": "La version principale est indiquée ; la bêta et les archives se changent en un clic", "cap2": "Sur la bêta : la version des lobbies est à un bouton, et c'est instantané", "h_why": "Pourquoi un launcher", "s_why": "Tout est préparé sur le serveur. Le PC du joueur ne décompresse ni ne recompresse rien.", "f1h": "Petites mises à jour", "f1p": "Les fichiers sont découpés en petits morceaux. Un patch d'équilibrage pèse quelques mégaoctets, pas tout l'installateur de plusieurs gigas.", "f2h": "Le jeu n'est jamais bloqué", "f2p": "Une nouvelle version est proposée par un bandeau — « les lobbies y sont déjà passés » — mais personne n'est obligé d'attendre.", "f3h": "Principale, bêta, archives", "f3p": "La version principale est clairement indiquée. Passez au test public ou à n'importe quelle version archivée en un clic — et revenez d'un bouton. Les versions déjà eues changent instantanément.", "f4h": "Réparer", "f4p": "Revérifie chaque fichier et ne répare que ceux qui sont abîmés. Rétablit les fichiers du mod supprimés par « Vérifier l'intégrité » de Steam.", "f5h": "Actualités de l'équipe", "f5p": "Notes de patch, tournois et annonces sur l'écran d'accueil, avec des liens vers ModDB.", "f6h": "Plusieurs miroirs", "f6p": "Si un serveur est bloqué ou lent dans un pays, le launcher passe à un autre et reprend le téléchargement.", "f7h": "Fichiers signés", "f7p": "Chaque version est signée par l'équipe Elite. Un miroir piraté ne peut pas glisser de fichiers modifiés.", "f8h": "Modules", "f8p": "Extras optionnels à cocher, par exemple le classement Relic de chaque joueur directement dans le lobby.", "f9h": "5 langues, open source", "f9p": "Anglais, russe, espagnol, français et allemand. Licence MIT ; Rust + le moteur web du système, environ 5 Mo sur le disque.", "h_stream": "Pour les streamers et les tournois", "p_stream": "Un lien sous le stream suffit. Un spectateur qui n'a jamais touché aux mods clique, récupère le launcher, et quelques minutes plus tard il est dans un lobby Elite.", "li1": "Plus de « télécharge cette archive, copie ce dossier » dans le chat", "li2": "Tout le monde se retrouve sur la même version que les lobbies", "li3": "Les téléchargements comptent toujours pour ModDB — les actualités et les liens y renvoient", "code": "Joue à Elite Mod avec moi :<br>https://…/elite/<br><br>1. Télécharge le launcher<br>2. Installe Elite<br>3. Joue", "h_news": "Dernières actualités", "s_news": "Depuis la page officielle sur ModDB.", "n1h": "Elite 3.2 est disponible !", "n1p": "Les refontes du test public sont désormais la version finale — c'est la version principale, jouée dans les lobbies.", "n1a": "Lire sur ModDB →", "n2h": "Elite Mod v3.1 est en ligne", "n2p": "Changements d'équilibrage pour toutes les races, nouvelles cartes pour le pool 3v3 et corrections.", "n2a": "Elite Mod sur ModDB →", "h_ready": "Prêt ?", "s_ready": "Gratuit. Deux minutes suffisent.", "ft_moddb": "Elite Mod sur ModDB", "ft_stats": "Statistiques des joueurs", "ft_steam": "DoW II: Retribution sur Steam", "ft": "Page de démonstration faite par un membre de la communauté, à titre d'exemple. Elite Mod est fait par l'équipe Elite ; cette page n'est pas affiliée à eux.<br>Dawn of War II est une marque de Games Workshop, Relic Entertainment et SEGA.", "title": "Elite Mod Launcher — démo", "req_mac": "Sur Mac, Elite tourne via CrossOver ou Whisky ; au premier lancement : clic droit → Ouvrir.", "deb": "Aussi en paquet .deb :", "setup": "Sans installation (décompresser et lancer) :", "lab_bar": "Modules et outils expérimentaux :", "lab_a": "Elite Lab →", "lab_h": "Elite Lab", "lab_p": "Les expériences que nous testons avec la communauté — tout se télécharge sur une seule page.", "lab_1": "Classement Relic dans le salon + exclusion automatique", "lab_2": "Diagnostic du lag observateur et du bouton Continue", "lab_3": "Statistiques des joueurs", "lab_4": "Analyse des replays", "lab_btn": "Ouvrir les expériences →", "ft_lab": "Expériences", "f10h": "Peut être fermé", "f10p": "Pas besoin de garder le launcher ouvert — il n'affecte pas le jeu. Après l'installation, le mod fonctionne seul, même si vous supprimez le launcher."}, "de": {"live_ingame": "Jetzt in DoW II:", "live_launcher": "mit dem Launcher:", "live_search": "suchen:", "live_play": "spielen:", "ladder_bar": "Ladder: Automatch-Warteschlange, laufende Spiele, Verlauf und Rangliste:", "ladder_a": "Ladder →", "notgame": "Installiere oder entpacke den Launcher überall AUSSER im Dawn-of-War-II-Ordner (wo DOW2.exe liegt) – sonst kann das Spiel abstürzen. Der Launcher findet das Spiel selbst.", "demo": "Konzeptseite, nur ein Beispiel — <b>keine offizielle Seite von Elite Mod</b>. Das Original:", "lead": "Die kompetitive Balance-Mod für Dawn of War II. Ein kleiner Launcher installiert sie, hält sie aktuell und startet das Spiel — ohne Archive und ohne Kopieren von Hand.", "dl": "Elite Launcher herunterladen", "sub_win": "für Windows · Installer 2,3 MB", "sub_linux": "für Linux (AppImage) · 104 MB · kostenlos", "sub_mac": "für macOS · Intel + Apple Silicon · 5 MB", "src": "Quellcode (MIT)", "req": "Benötigt die Steam-Version von <a href=\"https://store.steampowered.com/app/56400/\" target=\"_blank\" rel=\"noopener\">Dawn of War II: Retribution</a>. Der Launcher findet sie selbst.", "langs": "Sprachen:", "h_two": "Zwei Klicks bis zum Spiel", "s_two": "Einmal installieren, danach nur noch auf Spielen drücken. Kommt eine neue Version, sagt der Launcher Bescheid — und lädt nur die Änderungen.", "st1h": "Launcher herunterladen", "st1p": "Ein kleiner Installer für Windows, macOS und Linux.", "st2h": "Elite installieren", "st2p": "Er findet Dawn of War II in jeder Steam-Bibliothek und installiert die Mod. Fehlt das Spiel, öffnet er die Steam-Seite.", "st3h": "Spielen", "st3p": "Großer roter Knopf. Geht auch offline — das Spiel startet immer, mit oder ohne Update.", "h_look": "So sieht es aus", "s_look": "Screenshots des funktionierenden Prototyps. Neuigkeiten, Ankündigungen und Versionen kommen vom Server des Elite-Teams.", "cap1": "Die Hauptversion ist markiert; Beta und Archivversionen wechseln mit einem Klick", "cap2": "Auf der Beta: die Lobby-Version ist einen Knopf entfernt, und zwar sofort", "h_why": "Warum ein Launcher", "s_why": "Alles wird auf dem Server vorbereitet. Der PC des Spielers entpackt und verpackt nichts.", "f1h": "Kleine Updates", "f1p": "Dateien werden in kleine Stücke geteilt. Ein Balance-Patch sind ein paar Megabyte, nicht der ganze mehrere Gigabyte große Installer.", "f2h": "Spielen wird nie blockiert", "f2p": "Eine neue Version wird mit einem Banner angeboten — „die Lobbys spielen schon damit“ — aber niemand muss warten.", "f3h": "Haupt, Beta, Archiv", "f3p": "Die Hauptversion ist klar markiert. Zum öffentlichen Test oder zu jeder Archivversion mit einem Klick — und mit einem Knopf zurück. Versionen, die du schon hattest, wechseln sofort.", "f4h": "Reparieren", "f4p": "Prüft jede Datei neu und repariert nur kaputte. Holt die Mod-Dateien zurück, die Steams „Integrität überprüfen“ entfernt.", "f5h": "Neuigkeiten vom Team", "f5p": "Patchnotes, Turniere und Ankündigungen direkt auf dem Startbildschirm, mit Links zu ModDB.", "f6h": "Mehrere Mirrors", "f6p": "Ist ein Server in einem Land gesperrt oder langsam, wechselt der Launcher zum nächsten und setzt den Download fort.", "f7h": "Signierte Dateien", "f7p": "Jede Version ist vom Elite-Team signiert. Ein gehackter Mirror kann keine veränderten Dateien unterschieben.", "f8h": "Erweiterungen", "f8p": "Optionale Extras per Häkchen, z. B. das Relic-Rating jedes Spielers direkt in der Lobby.", "f9h": "5 Sprachen, Open Source", "f9p": "Englisch, Russisch, Spanisch, Französisch und Deutsch. MIT-Lizenz; Rust + die Web-Engine des Systems, etwa 5 MB auf der Platte.", "h_stream": "Für Streamer und Turniere", "p_stream": "Ein Link unter dem Stream reicht. Ein Zuschauer, der noch nie Mods angefasst hat, klickt, bekommt den Launcher und ist ein paar Minuten später in einer Elite-Lobby.", "li1": "Kein „lad dieses Archiv, kopier jenen Ordner“ im Chat", "li2": "Alle landen auf derselben Version wie die Lobbys", "li3": "Downloads zählen weiter für ModDB — Neuigkeiten und Links führen dorthin", "code": "Spiel Elite Mod mit mir:<br>https://…/elite/<br><br>1. Launcher herunterladen<br>2. Elite installieren<br>3. Spielen", "h_news": "Neueste Meldungen", "s_news": "Von der offiziellen ModDB-Seite.", "n1h": "Elite 3.2 ist da!", "n1p": "Die Überarbeitungen aus dem öffentlichen Test sind jetzt die fertige Version — die Hauptversion, die in den Lobbys gespielt wird.", "n1a": "Auf ModDB lesen →", "n2h": "Elite Mod v3.1 ist live", "n2p": "Balance-Änderungen für alle Rassen, neue Karten für den 3v3-Pool und Fehlerbehebungen.", "n2a": "Elite Mod auf ModDB →", "h_ready": "Bereit?", "s_ready": "Kostenlos. Dauert ein paar Minuten.", "ft_moddb": "Elite Mod auf ModDB", "ft_stats": "Spielerstatistiken", "ft_steam": "DoW II: Retribution auf Steam", "ft": "Demoseite, von einem Community-Mitglied als Beispiel erstellt. Elite Mod wird vom Elite-Team gemacht; diese Seite gehört nicht zu ihnen.<br>Dawn of War II ist eine Marke von Games Workshop, Relic Entertainment und SEGA.", "title": "Elite Mod Launcher — Demo", "req_mac": "Auf dem Mac läuft Elite über CrossOver oder Whisky; beim ersten Start der App: Rechtsklick → Öffnen.", "deb": "Auch als .deb-Paket:", "setup": "Ohne Installation (entpacken und starten):", "lab_bar": "Experimentelle Erweiterungen und Tools:", "lab_a": "Elite Lab →", "lab_h": "Elite Lab", "lab_p": "Experimente, die wir mit der Community testen — alles auf einer Seite herunterladen.", "lab_1": "Relic-Rating in der Lobby + automatischer Kick", "lab_2": "Diagnose von Beobachter-Lag und Continue-Knopf", "lab_3": "Spielerstatistiken", "lab_4": "Replay-Analyse", "lab_btn": "Experimente öffnen →", "ft_lab": "Experimente", "f10h": "Kann geschlossen werden", "f10p": "Der Launcher muss nicht offen bleiben — er beeinflusst das laufende Spiel nicht. Nach der Installation läuft die Mod von selbst, auch wenn du den Launcher entfernst."}};
+(function () {
+  var EN = {};
+  var els = document.querySelectorAll("[data-i]");
+  for (var i = 0; i < els.length; i++) EN[els[i].getAttribute("data-i")] = els[i].innerHTML;
+  EN.title = document.title;
+  EN.sub_win = "for Windows · 2.3 MB installer"; EN.sub_linux = "for Linux (AppImage) · 104 MB · free"; EN.sub_mac = "for macOS · Intel + Apple Silicon · 5 MB";
+  I18N.en = EN;
+  var ua = navigator.userAgent, plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+  var os = /Mac/i.test(plat) ? "mac" : (/Linux/i.test(plat) && !/Android/i.test(ua)) ? "linux" : "win";
+  var files = { win: "dl/EliteLauncher-1.2.12-setup.exe", linux: "dl/EliteLauncher-1.2.12.AppImage", mac: "dl/EliteLauncher-1.2.12-mac.zip" };
+  var VER = (files.win.match(/EliteLauncher-([\d.]+)-/) || [])[1] || "";
+  var lang = "en";
+  function setOS(o) {
+    os = o;
+    var dl = document.querySelectorAll("[data-dl]");
+    for (var j = 0; j < dl.length; j++) dl[j].href = files[os];
+    var subs = document.querySelectorAll("[data-dl-sub]");
+    for (var s = 0; s < subs.length; s++) subs[s].textContent = (I18N[lang] || EN)["sub_" + os] + (VER ? " · v" + VER : "");
+    var tb = document.querySelectorAll(".ostabs button");
+    for (var t = 0; t < tb.length; t++) { var on = tb[t].getAttribute("data-os") === os; tb[t].className = on ? "on" : ""; tb[t].setAttribute("aria-selected", on); }
+    var oo = document.querySelectorAll(".os-only");
+    for (var k = 0; k < oo.length; k++) oo[k].className = "os-only" + (oo[k].getAttribute("data-for") === os ? " show" : "");
+  }
+  var tbs = document.querySelectorAll(".ostabs button");
+  for (var t = 0; t < tbs.length; t++) tbs[t].onclick = function () { setOS(this.getAttribute("data-os")); };
+
+  function apply(l) {
+    lang = l;
+    var d = I18N[lang] || EN;
+    for (var i = 0; i < els.length; i++) { var k = els[i].getAttribute("data-i"); if (d[k] != null) els[i].innerHTML = d[k]; }
+    setOS(os);
+    document.title = d.title; document.documentElement.lang = lang;
+    var ls = document.querySelectorAll("#langs a");
+    for (var n = 0; n < ls.length; n++) ls[n].className = ls[n].getAttribute("data-l") === lang ? "on" : "";
+  }
+  function pick() {
+    var q = (location.search.match(/[?&]lang=([a-z]{2})/) || [])[1];
+    if (q && I18N[q]) return q;
+    try { var saved = localStorage.getItem("lang"); if (saved && I18N[saved]) return saved; } catch (e) {}
+    var nav = (navigator.languages || [navigator.language || "en"]);
+    for (var i = 0; i < nav.length; i++) { var c = String(nav[i]).slice(0, 2).toLowerCase(); if (I18N[c]) return c; }
+    return "en";
+  }
+  var ls = document.querySelectorAll("#langs a");
+  for (var n = 0; n < ls.length; n++) ls[n].onclick = function () {
+    var l = this.getAttribute("data-l"); try { localStorage.setItem("lang", l); } catch (e) {} apply(l);
+  };
+  function setFiles(j){
+    if(!j||!j.files)return; var f=j.files;
+    if(f.win)files.win="dl/"+f.win; if(f.linux)files.linux="dl/"+f.linux; if(f.mac)files.mac="dl/"+f.mac;
+    if(j.version)VER=j.version;
+    var p=document.querySelector("[data-dl-portable]"); if(p&&f.win_portable){p.href="dl/"+f.win_portable;p.textContent=f.win_portable;}
+    var d=document.querySelector("[data-dl-deb]"); if(d&&f.deb){d.href="dl/"+f.deb;d.textContent=f.deb;}
+    var sc=document.querySelector("[data-dl-src]"); if(sc&&f.src){sc.href="dl/"+f.src;}
+    setOS(os);
+  }
+  try{fetch("dl/latest.json",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(setFiles).catch(function(){});}catch(e){}
+  apply(pick());
+})();
+</script>
+
+<script>
+(function () {
+  var RU = (document.documentElement.lang || '').indexOf('ru') === 0;
+  function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); }
+  function mmss(s) { s = s | 0; return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function names(t) { return (t || []).map(function (p) { return esc(p.name) + (p.rating ? ' <small>' + p.rating + '</small>' : ''); }).join(', '); }
+  var last = null;
+  function load() {
+    fetch('/ladder/api/mm/live', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) { last = d; render(d); }).catch(function () {});
+  }
+  function render(d) {
+    {
+      var ru = (document.documentElement.lang || 'en').indexOf('ru') === 0;
+      var playing = (d.matches || []).filter(function (m) { return m.state === 'playing'; });
+      var forming = (d.matches || []).filter(function (m) { return m.state !== 'playing'; });
+      document.getElementById('lv_game').textContent = d.in_game == null ? '—' : d.in_game;
+      document.getElementById('lv_online').textContent = d.online;
+      document.getElementById('lv_search').textContent = (d.searching || []).length;
+      document.getElementById('lv_play').textContent = playing.length;
+      var h = '<h4>' + (ru ? 'Ищут матч' : 'Searching') + '</h4>';
+      h += (d.searching || []).length ? d.searching.map(function (p) {
+        return '<div>' + esc(p.name) + ' <small>' + esc(p.mode) + ' · ' + p.rating + ' · ' + mmss(p.waiting) + '</small></div>'; }).join('')
+        : '<div><small>' + (ru ? 'никого — нажмите «Найти игру» в игре' : 'nobody — press Find a Game in the game') + '</small></div>';
+      if (forming.length) h += '<h4>' + (ru ? 'Собираются' : 'Getting ready') + '</h4>' + forming.map(function (m) {
+        return '<div>' + names(m.team1) + ' <small>vs</small> ' + names(m.team2) + ' <small>· ' + esc(m.mode) + '</small></div>'; }).join('');
+      h += '<h4>' + (ru ? 'Играют' : 'Playing') + '</h4>';
+      h += playing.length ? playing.map(function (m) {
+        return '<div>' + names(m.team1) + ' <small>vs</small> ' + names(m.team2) + ' <small>· ' + esc(m.mode) + ' · ' + esc((m.map || '').replace(/^\(\dp\)\s*/, '')) + ' · ' + mmss(m.since) + '</small></div>'; }).join('')
+        : '<div><small>' + (ru ? 'сейчас нет матчей ладдера' : 'no ladder matches right now') + '</small></div>';
+      h += '<div style="margin-top:8px"><small>' + (ru ? 'Нажмите — откроется ладдер' : 'Click to open the ladder') + '</small></div>';
+      document.getElementById('lv_pop').innerHTML = h;
+    }
+  }
+  document.querySelectorAll('[data-l]').forEach(function (a) { a.addEventListener('click', function () { setTimeout(function () { if (last) render(last); }, 0); }); });
+  load(); setInterval(load, 20000);
+  var lv = document.getElementById('live');
+  lv.addEventListener('touchstart', function (e) { if (!lv.classList.contains('open')) { e.preventDefault(); lv.classList.add('open'); } }, {passive: false});
+})();
+</script>
+</body>
+</html>

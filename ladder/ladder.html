@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elite Ladder — Dawn of War II</title>
+<meta name="description" content="Рейтинговая таблица Dawn of War II: Retribution (Elite). Glicko-2, сезоны, 1v1/2v2/3v3.">
+<style>
+@font-face { font-family: Cinzel; src: url(/elite/fonts/cinzel-700.ttf); font-weight: 700; font-display: swap; }
+@font-face { font-family: Cinzel; src: url(/elite/fonts/cinzel-900.ttf); font-weight: 900; font-display: swap; }
+@font-face { font-family: CinzelCyr; src: url(/elite/fonts/cormorantsc-cyr-700.ttf); font-weight: 700 900; unicode-range: U+0400-045F, U+0490-0491, U+2116; font-display: swap; }
+@font-face { font-family: Spectral; src: url(/elite/fonts/spectral-400.ttf); font-weight: 400; font-display: swap; }
+@font-face { font-family: Spectral; src: url(/elite/fonts/spectral-600.ttf); font-weight: 600; font-display: swap; }
+:root {
+  --bg: #0d0b09; --panel: #16130f; --panel-2: #1c1813; --line: #3a3124; --gold: #d9b25f; --gold-2: #f0d48f;
+  --text: #e6dccb; --muted: #a39782; --red: #c42a24; --green: #6fae53; --demo: #e0a526;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 Spectral, Georgia, serif;
+  background-image: radial-gradient(ellipse at 50% -10%, #2a1d0933 0%, transparent 60%); min-height: 100vh; }
+a { color: var(--gold-2); text-decoration: none; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px 60px; }
+header { text-align: center; padding: 34px 0 8px; }
+h1 { margin: 0; font: 900 clamp(30px, 6vw, 52px) Cinzel, CinzelCyr, serif; letter-spacing: .05em; color: var(--gold-2);
+  text-shadow: 0 2px 0 #5a3f12, 0 0 40px #d9b25f22; }
+.sub { color: var(--muted); font-size: 15px; letter-spacing: .14em; text-transform: uppercase; margin-top: 4px; }
+
+/* live matchmaking bar */
+.mm { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: stretch; margin: 20px 0 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 10px 16px; min-width: 120px; text-align: center; }
+.stat b { display: block; font: 900 26px Cinzel, CinzelCyr, serif; color: var(--gold-2); line-height: 1.1; }
+.stat span { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stat.play b { color: var(--green); } .stat.q b { color: var(--demo); }
+.cta { display: block; text-align: center; margin: 8px 0 22px; }
+.cta a { display: inline-block; font: 700 15px Cinzel, CinzelCyr, serif; letter-spacing: .06em; color: #fff3df;
+  background: linear-gradient(var(--red), #8a1414); border: 1px solid #e8574d; border-radius: 4px; padding: 11px 26px;
+  box-shadow: 0 8px 26px #c42a2444, inset 0 1px 0 #ff9a8f55; }
+.cta a:hover { transform: translateY(-1px); }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; margin: 6px 0 14px; }
+.ostabs { display: flex; width: max-content; max-width: 100%; border: 1px solid #5a4a2e; border-radius: 4px; overflow: hidden; background: #0e0c09; }
+.ostabs button { font: 700 15px Cinzel, CinzelCyr, serif; letter-spacing: .06em; color: var(--muted); background: none; border: 0; padding: 9px 20px; cursor: pointer; }
+.ostabs button + button { border-left: 1px solid #3a3124; }
+.ostabs button.on { background: linear-gradient(#3a2a12, #22190c); color: var(--gold-2); box-shadow: inset 0 -2px 0 var(--gold); }
+select { font: 600 14px Spectral, serif; color: var(--text); background: var(--panel); border: 1px solid #5a4a2e; border-radius: 4px; padding: 8px 10px; }
+
+/* table */
+.board { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.board th { font: 700 12px Cinzel, CinzelCyr, serif; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  text-align: right; padding: 12px 14px; border-bottom: 1px solid var(--line); background: #110e0b; }
+.board th.l, .board td.l { text-align: left; }
+.board td { padding: 10px 14px; border-bottom: 1px solid #241f17; text-align: right; font-variant-numeric: tabular-nums; }
+.board tr:last-child td { border-bottom: 0; }
+.board tr:hover td { background: #1d1811; }
+.rank { color: var(--muted); font: 700 16px Cinzel, serif; width: 48px; }
+.rank.top1 { color: #f0d48f; } .rank.top2 { color: #cfd2d6; } .rank.top3 { color: #cd7f32; }
+.player { font-weight: 600; font-size: 17px; }
+.player .flag { margin-right: 8px; }
+.rating { color: var(--gold-2); font-weight: 600; font-size: 18px; }
+.rd { color: var(--muted); font-size: 14px; }
+.wl .w { color: var(--green); } .wl .l { color: #c9756f; }
+.note { color: var(--muted); font-size: 13px; text-align: center; margin-top: 14px; }
+.loading { text-align: center; color: var(--muted); padding: 40px; }
+.lang { display: inline-flex; margin-top: 12px; border: 1px solid #5a4a2e; border-radius: 4px; overflow: hidden; }
+.lang button { font: 700 12px Cinzel, serif; letter-spacing: .1em; color: var(--muted); background: #0e0c09; border: 0; padding: 5px 12px; cursor: pointer; }
+.lang button + button { border-left: 1px solid #3a3124; }
+.lang button.on { color: var(--gold-2); background: linear-gradient(#3a2a12, #22190c); }
+.dl { display: inline-block; vertical-align: middle; margin: 12px 0 0 10px; font: 700 13px Cinzel, CinzelCyr, serif; letter-spacing: .07em; text-transform: uppercase; color: #1a1206; background: linear-gradient(var(--gold), var(--gold-2)); border-radius: 4px; padding: 8px 18px; text-decoration: none; box-shadow: 0 1px 0 #0006; }
+.dl:hover { filter: brightness(1.08); }
+/* live: who is searching, matches */
+.live { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 4px 0 24px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; min-width: 0; }
+.box h2 { margin: 0; padding: 10px 14px; font: 700 13px Cinzel, CinzelCyr, serif; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--line); background: #110e0b; display: flex; justify-content: space-between; }
+.box h2 em { font-style: normal; color: var(--gold-2); }
+.li { padding: 9px 14px; border-bottom: 1px solid #241f17; font-size: 15px; }
+.li:last-child { border-bottom: 0; }
+.li .top { display: flex; justify-content: space-between; gap: 8px; }
+.li .nm { font-weight: 600; } .li .rt { color: var(--gold-2); font-variant-numeric: tabular-nums; }
+.li .meta { color: var(--muted); font-size: 13px; }
+.tag { display: inline-block; font: 700 11px Cinzel, CinzelCyr, serif; letter-spacing: .08em; padding: 1px 7px; border-radius: 3px; margin-right: 6px; border: 1px solid #5a4a2e; color: var(--gold-2); }
+.tag.creating { color: var(--demo); border-color: #6b5320; } .tag.lobby { color: #8fc0e6; border-color: #2e4a5f; } .tag.playing { color: var(--green); border-color: #2f5a24; }
+.vs { color: var(--muted); margin: 0 6px; }
+.empty { padding: 16px 14px; color: var(--muted); font-size: 14px; text-align: center; }
+@media (max-width: 760px) { .live { grid-template-columns: 1fr; } }
+/* history of ladder matches */
+.hist-h { font: 700 clamp(20px, 3.4vw, 26px) Cinzel, CinzelCyr, serif; letter-spacing: .06em; color: var(--gold-2); margin: 6px 0 10px; text-align: center; }
+#h-more { margin-bottom: 8px; }
+#h-more ~ .controls { margin-top: 30px; }
+.hfil { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.hfil input { flex: 1 1 200px; min-width: 0; font: 15px Spectral, serif; color: var(--text); background: var(--panel); border: 1px solid #5a4a2e; border-radius: 4px; padding: 8px 10px; }
+.hfil select { flex: 0 1 auto; max-width: 100%; }
+.hm { display: grid; grid-template-columns: 96px 1fr auto; gap: 14px; align-items: center; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 4px; padding: 10px 12px; margin-bottom: 8px; }
+.hm .mini { width: 96px; height: 96px; border-radius: 3px; background: #0e0c09 center/cover no-repeat; border: 1px solid #2c251b; }
+.hm .hd { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+.hm .hd b { color: var(--text); font-weight: 600; }
+.hm .teams { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+.hm .vsx { font: 700 13px Cinzel, serif; color: var(--muted); }
+.hm .side { min-width: 0; border-radius: 3px; padding: 4px 6px; }
+.hm .side.win { background: linear-gradient(90deg, #6fae5322, transparent); box-shadow: inset 2px 0 0 var(--green); }
+.hm .side.lose { opacity: .78; }
+.pl { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 15px; line-height: 1.25; padding: 2px 0; }
+.pl img { width: 28px; height: 28px; border-radius: 3px; flex: none; background: #0e0c09; }
+.pl img.rc { width: 20px; height: 20px; }
+.pl .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.pl .r { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; flex: none; }
+.pl .d { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; flex: none; margin-left: 2px; }
+.pl .d.up { color: var(--green); } .pl .d.dn { color: #d9534f; }
+.res.est { color: var(--gold-2); opacity: .85; font-style: italic; }
+.controls, table.board, #note { display: none; }   /* таблица рейтинга скрыта по просьбе — важна только история матчей */
+.hm .act { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.hm .act a, .more { font: 700 12px Cinzel, CinzelCyr, serif; letter-spacing: .06em; border: 1px solid #5a4a2e; border-radius: 4px; padding: 6px 10px; color: var(--gold-2); white-space: nowrap; background: none; cursor: pointer; }
+.hm .act .res { font: 700 12px Cinzel, CinzelCyr, serif; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+.more { display: block; margin: 10px auto 0; padding: 9px 22px; font-size: 13px; }
+.more[hidden] { display: none; }
+@media (max-width: 620px) {
+  .hm { grid-template-columns: 64px 1fr; } .hm .mini { width: 64px; height: 64px; }
+  .hm .act { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+  .hm .teams { grid-template-columns: 1fr; } .hm .vsx { display: none; }
+}
+@media (max-width: 620px) {
+  .board .hide { display: none; }
+  .board th, .board td { padding: 9px 8px; }
+  .player { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Elite Ladder</h1>
+    <div class="sub">Dawn of War II · Retribution</div>
+    <div class="lang" id="lang"><button data-l="ru">RU</button><button data-l="en">EN</button></div>
+    <a class="dl" href="/elite/" data-t="dlLauncher">Скачать лаунчер</a>
+  </header>
+
+  <div class="mm">
+    <div class="stat"><b id="s-online">—</b><span data-t="online">онлайн</span></div>
+    <div class="stat q"><b id="s-queue">—</b><span data-t="queue">в очереди</span></div>
+    <div class="stat play"><b id="s-playing">—</b><span data-t="playing">играют</span></div>
+  </div>
+
+  <div class="live">
+    <div class="box"><h2><span data-t="searching">Сейчас ищут</span> <em id="l-n">0</em></h2><div id="l-search"><div class="empty" data-t="loading">Загрузка…</div></div></div>
+    <div class="box"><h2><span data-t="matches">Матчи</span> <em id="l-m">0</em></h2><div id="l-matches"><div class="empty" data-t="loading">Загрузка…</div></div></div>
+  </div>
+
+  <h2 class="hist-h" id="history" data-t="hist">История матчей ладдера</h2>
+  <div class="hfil">
+    <input id="h-q" type="search" data-tp="hq" placeholder="Ник, карта или лобби">
+    <select id="h-mode"><option value="" data-t="allModes">Все режимы</option><option>1v1</option><option>2v2</option><option>3v3</option></select>
+    <select id="h-race"></select>
+    <select id="h-map"></select>
+  </div>
+  <div id="h-list"><div class="empty" data-t="loading">Загрузка…</div></div>
+  <button class="more" id="h-more" hidden data-t="more">Показать ещё</button>
+
+  <div class="controls">
+    <div class="ostabs" id="modes">
+      <button data-mode="1v1" class="on">1 vs 1</button>
+      <button data-mode="2v2">2 vs 2</button>
+      <button data-mode="3v3">3 vs 3</button>
+    </div>
+    <select id="season"></select>
+  </div>
+
+  <table class="board">
+    <thead>
+      <tr>
+        <th class="l">#</th>
+        <th class="l" data-t="player">Игрок</th>
+        <th data-t="rating">Рейтинг</th>
+        <th class="hide">RD</th>
+        <th data-t="games">Игр</th>
+        <th class="hide">W–L</th>
+      </tr>
+    </thead>
+    <tbody id="rows"><tr><td colspan="6" class="loading" data-t="loading">Загрузка…</td></tr></tbody>
+  </table>
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let mode = '1v1', season = '';
+
+function flag(cc) {
+  if (!cc || cc.length !== 2) return '🏳';
+  const A = 0x1F1E6; cc = cc.toUpperCase();
+  return String.fromCodePoint(A + cc.charCodeAt(0) - 65, A + cc.charCodeAt(1) - 65);
+}
+function esc(s) { return (s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+
+async function loadStatus() {
+  try {
+    const d = await (await fetch('/ladder/api/mm/status', { cache: 'no-store' })).json();
+    $('#s-online').textContent = d.online;
+    const q = d.queue || {}; $('#s-queue').textContent = (q['1v1']||0) + (q['2v2']||0) + (q['3v3']||0);
+    $('#s-playing').textContent = d.playing;
+  } catch (e) {}
+}
+
+const I18N = {
+  ru: { online: 'онлайн', queue: 'в очереди', playing: 'играют', cta: 'Встать в очередь', searching: 'Сейчас ищут', matches: 'Матчи',
+        loading: 'Загрузка…', player: 'Игрок', rating: 'Рейтинг', games: 'Игр', maps: 'карт', anyMap: 'любая карта', anyOpp: 'любой соперник',
+        ratingDiff: 'рейтинга', waits: 'ждёт', nobody: 'Никто не ищет. Нажмите «Find a Game» в игре.', noMatches: 'Сейчас матчей нет.',
+        hostMap: 'карта на выбор хоста', sec: 'с', min: 'мин', noPlayers: 'Пока нет игроков с 5+ матчами в этом режиме.', error: 'Ошибка загрузки.',
+        note: (n, s) => `${n} игроков · сезон ${s} · рейтинг Glicko-2, минимум 5 матчей`, season: 'сезон',
+        st: { creating: 'создаётся', lobby: 'в лобби', playing: 'идёт' },
+        race: { space_marines: 'Космодесант', chaos_space_marines: 'Хаос', eldar: 'Эльдар', imperial_guard: 'Имп. гвардия', ordo_malleus: 'Ордо Маллеус', orks: 'Орки', tau: 'Тау', tyranids: 'Тираниды', necron: 'Некроны' },
+        newbie: 'новичок', newT: 'Ещё нет рейтинга: нет игр в ладдере и в Relic', relicT: 'Рейтинг Relic: в ладдере этого сезона в этом режиме игр ещё нет',
+        desc: 'Рейтинговая таблица Dawn of War II: Retribution (Elite). Glicko-2, сезоны, 1v1/2v2/3v3.',
+        hist: 'История матчей ладдера', hq: 'Ник, карта или лобби', allModes: 'Все режимы', allRaces: 'Все расы', allMaps: 'Все карты', more: 'Показать ещё',
+        dlLauncher: 'Скачать лаунчер', replay: 'Реплей', conf: { 'высокая':'высокая','средняя':'средняя','низкая':'низкая' }, mmrAfter: 'MMR после матча', estResult: 'по реплею', estHint: 'Предположительный итог по реплею (парсер, пока Relic не отдал результат); обновится точным.', noReplay: 'реплея нет', won: 'победа', hNone: 'Матчей с такими условиями нет.', hRes: { finished: '', playing: 'идёт', unknown: 'итог неизвестен' },
+        watchers: 'зрители' },
+  en: { online: 'online', queue: 'in queue', playing: 'playing', cta: 'Join the queue', searching: 'Searching now', matches: 'Matches',
+        loading: 'Loading…', player: 'Player', rating: 'Rating', games: 'Games', maps: 'maps', anyMap: 'any map', anyOpp: 'any opponent',
+        ratingDiff: 'rating', waits: 'waiting', nobody: 'Nobody is searching. Press “Find a Game” in the game.', noMatches: 'No matches right now.',
+        hostMap: 'map picked by the host', sec: 's', min: 'min', noPlayers: 'No players with 5+ games in this mode yet.', error: 'Loading error.',
+        note: (n, s) => `${n} players · season ${s} · Glicko-2 rating, at least 5 games`, season: 'season',
+        st: { creating: 'being created', lobby: 'in lobby', playing: 'in progress' },
+        race: { space_marines: 'Space Marines', chaos_space_marines: 'Chaos', eldar: 'Eldar', imperial_guard: 'Imperial Guard', ordo_malleus: 'Ordo Malleus', orks: 'Orks', tau: 'Tau', tyranids: 'Tyranids', necron: 'Necrons' },
+        newbie: 'new', newT: 'No rating yet: no ladder or Relic games', relicT: 'Relic rating: no ladder games this season in this mode yet',
+        desc: 'Dawn of War II: Retribution (Elite) ladder. Glicko-2 rating, seasons, 1v1/2v2/3v3.',
+        hist: 'Ladder match history', hq: 'Player, map or lobby', allModes: 'All modes', allRaces: 'All races', allMaps: 'All maps', more: 'Show more',
+        dlLauncher: 'Download launcher', replay: 'Replay', conf: { 'высокая':'high','средняя':'medium','низкая':'low' }, mmrAfter: 'MMR after the match', estResult: 'by replay', estHint: 'Estimated outcome from the replay (parser, until Relic reports); will be replaced by the exact result.', noReplay: 'no replay', won: 'won', hNone: 'No matches for these filters.', hRes: { finished: '', playing: 'in progress', unknown: 'result unknown' },
+        watchers: 'observers' } };
+let LANG = (() => {
+  const q = new URLSearchParams(location.search).get('lang'); if (q === 'ru' || q === 'en') return q;
+  try { const v = localStorage.getItem('ladderLang'); if (v === 'ru' || v === 'en') return v; } catch (e) {}
+  return /^(ru|uk|be|kk)/i.test(navigator.language || '') ? 'ru' : 'en';
+})();
+const T = k => I18N[LANG][k];
+const STATE = new Proxy({}, { get: (_, k) => I18N[LANG].st[k] });
+const RACE = new Proxy({}, { get: (_, k) => I18N[LANG].race[k] });
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-t]').forEach(e => { e.textContent = T(e.dataset.t); });
+  document.querySelectorAll('[data-tp]').forEach(e => { e.placeholder = T(e.dataset.tp); });
+  document.querySelector('meta[name=description]').content = T('desc');
+  document.querySelectorAll('#lang button').forEach(b => b.classList.toggle('on', b.dataset.l === LANG));
+}
+function dur(s) { s = Math.max(0, s|0); return s < 60 ? s + ' ' + T('sec') : Math.floor(s / 60) + ' ' + T('min') + ' ' + String(s % 60).padStart(2, '0') + ' ' + T('sec'); }
+function mapName(m) { return m ? esc(m.replace(/^\(?\d+p\)?[ _]?/i, '').replace(/_/g, ' ')) : T('hostMap'); }
+function who(p) {   // ник со ссылкой на профиль Steam, SteamID — в подсказке
+  const n = esc(p.name || 'Player');
+  return p.steam ? `<a href="https://steamcommunity.com/profiles/${esc(p.steam)}" target="_blank" rel="noopener" title="SteamID ${esc(p.steam)}">${n}</a>` : n;
+}
+function rt(p) {     // рейтинг ладдера; Relic — с пометкой; новичок — без цифры
+  if (p.rsrc === 'new') return `<span class="meta" title="${T('newT')}">${T('newbie')}</span>`;
+  if (p.rsrc === 'relic') return `<span title="${T('relicT')}">${p.rating}<sup class="meta"> R</sup></span>`;
+  return `${p.rating}`;
+}
+function race(r) { return r ? esc(RACE[r] || r) : ''; }
+async function loadLive() {
+  try {
+    const d = await (await fetch('/ladder/api/mm/live', { cache: 'no-store' })).json();
+    const S = d.searching || [], M = d.matches || [];
+    $('#l-n').textContent = S.length; $('#l-m').textContent = M.length;
+    $('#l-search').innerHTML = S.length ? S.map(p => {
+      const lim = [p.maps ? `${T('maps')}: ${p.maps}` : T('anyMap'), p.max_diff ? `±${p.max_diff} ${T('ratingDiff')}` : T('anyOpp')].join(' · ');
+      return `<div class="li"><div class="top"><span><span class="tag">${esc(p.mode)}</span><span class="nm">${who(p)}</span></span>
+        <span class="rt">${rt(p)}</span></div><div class="meta">${race(p.race) ? race(p.race) + ' · ' : ''}${lim} · ${T('waits')} ${dur(p.waiting)}</div></div>`;
+    }).join('') : `<div class="empty">${T('nobody')}</div>`;
+    $('#l-matches').innerHTML = M.length ? M.map(m => {
+      const t = ps => ps.map(p => `${who(p)} <span class="rt">${rt(p)}</span>${p.race ? ' <span class="meta">(' + race(p.race) + ')</span>' : ''}`).join(', ');
+      return `<div class="li"><div class="top"><span><span class="tag ${m.state}">${STATE[m.state] || m.state}</span><span class="tag">${esc(m.mode)}</span></span>
+        <span class="meta">${dur(m.since)}</span></div><div>${t(m.team1)}<span class="vs">vs</span>${t(m.team2)}</div>
+        <div class="meta">${mapName(m.map)}</div></div>`;
+    }).join('') : `<div class="empty">${T('noMatches')}</div>`;
+    $('#s-online').textContent = d.online;
+    const q = d.queue || {}; $('#s-queue').textContent = (q['1v1']||0) + (q['2v2']||0) + (q['3v3']||0);
+    $('#s-playing').textContent = M.filter(m => m.state === 'playing').length;
+  } catch (e) {}
+}
+
+async function loadSeasons() {
+  try {
+    const d = await (await fetch('/ladder/api/seasons')).json();
+    season = d.current;
+    const sel = $('#season'); sel.innerHTML = '';
+    (d.seasons || [d.current]).forEach(s => {
+      const o = document.createElement('option'); o.value = s; o.textContent = s.replace('-', ' '); sel.appendChild(o);
+    });
+    sel.value = season;
+    sel.onchange = () => { season = sel.value; loadBoard(); };
+  } catch (e) {}
+}
+
+async function loadBoard() {
+  const tb = $('#rows'); tb.innerHTML = `<tr><td colspan="6" class="loading">${T('loading')}</td></tr>`;
+  try {
+    const d = await (await fetch(`/ladder/api/board?mode=${mode}&season=${season}`)).json();
+    const b = d.board || [];
+    if (!b.length) { tb.innerHTML = `<tr><td colspan="6" class="loading">${T('noPlayers')}</td></tr>`; $('#note').textContent = ''; return; }
+    tb.innerHTML = b.map(r => {
+      const rk = r.rank <= 3 ? `rank top${r.rank}` : 'rank';
+      const prof = r.steam ? `https://steamcommunity.com/profiles/${r.steam}` : null;
+      const name = esc(r.name || ('#' + r.profile_id));
+      const nameCell = prof ? `<a href="${prof}" target="_blank" rel="noopener">${name}</a>` : name;
+      return `<tr>
+        <td class="l ${rk}">${r.rank}</td>
+        <td class="l player"><span class="flag">${flag(r.country)}</span>${nameCell}</td>
+        <td class="rating">${r.rating}</td>
+        <td class="hide rd">±${r.rd}</td>
+        <td>${r.games}</td>
+        <td class="hide wl"><span class="w">${r.wins}</span>–<span class="l">${r.losses}</span></td>
+      </tr>`;
+    }).join('');
+    $('#note').textContent = T('note')(b.length, season);
+  } catch (e) {
+    tb.innerHTML = `<tr><td colspan="6" class="loading">${T('error')}</td></tr>`;
+  }
+}
+
+$('#modes').addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  mode = btn.dataset.mode;
+  [...$('#modes').children].forEach(b => b.classList.toggle('on', b === btn));
+  loadBoard();
+});
+
+// ---------- история матчей ладдера ----------
+// иконки рас и героев, миникарты и названия карт — из игры (/elite/assets, собрано из архивов Elite 3.2)
+const A = '/elite/assets/'; let ASSETS = { races: {}, maps: {} }, hItems = [], hTimer = 0, hMapsFilled = false;
+const RNAME = { chaos_marines: 'chaos_space_marines', t_tau: 'tau', z_unecron: 'necron' };   // ключ игры -> ключ перевода
+const raceName = k => k ? (RACE[RNAME[k] || k] || k) : '';
+let MAPIDX = { _n: -1 };
+function mapKey(m) {                 // у решённых — уже ключ ассета; у нерешённых — сырое имя из mm, ищем ключ по имени
+  const raw = (m && m.map) || '';
+  if (ASSETS.maps[raw] || !raw) return raw;
+  const n = Object.keys(ASSETS.maps).length;
+  if (MAPIDX._n !== n) { MAPIDX = { _n: n }; for (const k in ASSETS.maps) {
+    const nm = (ASSETS.maps[k].name || '').toLowerCase().replace(/^\(\d+p\)\s*/, '').replace(/[^a-z0-9]/g, '');
+    (MAPIDX[nm] = MAPIDX[nm] || []).push(k); } }
+  const want = raw.toLowerCase().replace(/^\(\d+p\)\s*/, '').replace(/[^a-z0-9]/g, '');
+  const cands = MAPIDX[want] || [];
+  if (cands.length > 1) { const pref = ({ '1v1': '2p', '2v2': '4p', '3v3': '6p' })[m.mode]; const hit = pref && cands.find(k => k.startsWith(pref)); if (hit) return hit; }
+  return cands[0] || raw;
+}
+function mapTitle(k) { const m = ASSETS.maps[k]; return m && m.name ? esc(m.name) : mapName(k); }
+function heroImg(p) {
+  const r = ASSETS.races[p.race]; if (!r) return '';
+  const h = p.hero != null && r.heroes && r.heroes[p.hero];
+  const ri = `<img class="rc" src="${A + r.icon}" alt="" title="${esc(raceName(p.race))}">`;
+  return h ? ri + `<img src="${A + h.icon}" alt="" title="${esc(raceName(p.race) + ' · ' + h.name)}">` : ri;
+}
+function hDate(t) { return new Date(t * 1000).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+function hCard(m) {
+  const side = t => {
+    const ps = m.players.filter(p => p.team === t);
+    const cls = m.winner ? (m.winner === t ? 'win' : 'lose') : '';
+    return `<div class="side ${cls}">` + ps.map(p => `<div class="pl">${heroImg(p)}<span class="n">${esc(p.name || 'Player')}</span>` +
+      (p.rating && p.rsrc !== 'new' ? `<span class="r">${p.rating}</span>` : '') +
+      (p.mmr_delta != null ? `<span class="d ${p.mmr_delta >= 0 ? 'up' : 'dn'}" title="${T('mmrAfter')}: ${p.mmr}${m.estimated ? ' (' + T('estResult') + ')' : ''}">${m.estimated ? '≈' : ''}${p.mmr_delta >= 0 ? '▲ +' + p.mmr_delta : '▼ ' + p.mmr_delta}</span>` : '') + `</div>`).join('') + `</div>`;
+  };
+  const mk = mapKey(m), mm = ASSETS.maps[mk], mini = mm && mm.minimap ? `style="background-image:url('${A + mm.minimap}')"` : '';
+  const res = (m.estimated || m.state === 'finished') ? '' : T('hRes')[m.state];
+  const w = m.watchers && m.watchers.length ? ` · ${T('watchers')}: ${m.watchers.map(esc).join(', ')}` : '';
+  return `<div class="hm"><div class="mini" ${mini} title="${mapTitle(mk)}"></div><div style="min-width:0">
+    <div class="hd"><b>${esc(m.mode)}</b> · <b>${mapTitle(mk)}</b> · ${hDate(m.started)}${m.duration ? ' · ' + dur(m.duration) : ''}${w}</div>
+    <div class="teams">${side(1)}<span class="vsx">vs</span>${side(2)}</div></div>
+    <div class="act">${m.estimated ? `<span class="res est" title="${T('estHint')}">≈ ${T('estResult')}${m.confidence ? ' · ' + esc((I18N[LANG].conf && I18N[LANG].conf[m.confidence]) || m.confidence) : ''}</span>` : (res ? `<span class="res">${esc(res)}</span>` : '')}${m.replay ? `<a href="/replay/r/${esc(m.replay)}">▶ ${T('replay')}</a>` : `<span class="res">${T('noReplay')}</span>`}</div></div>`;
+}
+function hFillSelects(maps) {
+  const rs = $('#h-race'), cur = rs.value;
+  rs.innerHTML = `<option value="">${T('allRaces')}</option>` + Object.entries(ASSETS.races).filter(([k, r]) => r.playable !== false)
+    .map(([k]) => `<option value="${k}">${esc(raceName(k))}</option>`).join(''); rs.value = cur;
+  if (maps) { const ms = $('#h-map'), c2 = ms.value;
+    ms.innerHTML = `<option value="">${T('allMaps')}</option>` + maps.map(k => `<option value="${esc(k)}">${mapTitle(k)}</option>`).join(''); ms.value = c2; }
+}
+async function loadHistory(more) {
+  if (!more) hItems = [];
+  const n = hItems.length ? 10 : 5;     // сверху страницы: сначала 5, дальше по 10
+  const q = new URLSearchParams({ q: $('#h-q').value, mode: $('#h-mode').value, race: $('#h-race').value, map: $('#h-map').value, off: hItems.length, n });
+  try {
+    const d = await (await fetch('/ladder/api/history?' + q, { cache: 'no-store' })).json();
+    hItems = hItems.concat(d.items);
+    if (!hMapsFilled && !$('#h-map').value && !$('#h-q').value && !$('#h-mode').value && !$('#h-race').value) { hFillSelects(d.maps); hMapsFilled = true; }
+    $('#h-list').innerHTML = hItems.length ? hItems.map(hCard).join('') : `<div class="empty">${T('hNone')}</div>`;
+    $('#h-more').hidden = hItems.length >= d.total;
+  } catch (e) { $('#h-list').innerHTML = `<div class="empty">${T('error')}</div>`; }
+}
+$('#h-q').addEventListener('input', () => { clearTimeout(hTimer); hTimer = setTimeout(() => loadHistory(), 300); });
+['#h-mode', '#h-race', '#h-map'].forEach(s => $(s).addEventListener('change', () => loadHistory()));
+$('#h-more').addEventListener('click', () => loadHistory(true));
+async function initHistory() {
+  try { ASSETS = await (await fetch(A + 'index.json')).json(); } catch (e) {}
+  hFillSelects(null); await loadHistory();
+}
+
+$('#lang').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; LANG = b.dataset.l;
+  try { localStorage.setItem('ladderLang', LANG); } catch (er) {} applyLang(); loadLive(); loadBoard(); hMapsFilled = false; hFillSelects(null); loadHistory(); });
+applyLang();
+(async () => { loadLive(); setInterval(loadLive, 5000); initHistory(); await loadSeasons(); await loadBoard(); })();
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+[Unit]
+Description=DoW2 replay analyzer web (https://rts.fintebtc.de/replay/), isolated user replayweb
+After=network.target
+
+[Service]
+User=replayweb
+Group=replayweb
+WorkingDirectory=/srv/replayweb
+ExecStart=/usr/bin/python3 /srv/replayweb/app/app.py
+Restart=always
+RestartSec=3
+UMask=0027
+ProtectSystem=strict
+ReadWritePaths=/srv/replayweb/data /srv/replayweb/reports /srv/replayweb/queue
+ProtectHome=yes
+InaccessiblePaths=/var/www /mnt /etc/nginx /etc/supervisor /usr/local/bin /root /var/log
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+MemoryMax=1G
+CPUQuota=200%
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

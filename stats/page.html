@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commander Archives</title>
+<meta name="description" content="Dawn of War II Retribution and Elite Mod player statistics and Relic rating.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0b0a09; --panel: #15120e; --panel2: #1c1813; --line: #3a2f1d; --line2: #5c4a28;
+  --gold: #d4af55; --gold2: #f0d68a; --brass: #8a6d2b; --bone: #e9dfc8; --muted: #a39577;
+  --blood: #9e2421; --blood2: #c8382f; --win: #c9a646; --loss: #a8322c; --green: #7fa65a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--bone); font: 17px/1.5 "Spectral", Georgia, serif; min-height: 100vh; }
+html {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(158,36,33,.22), transparent 55%),
+    radial-gradient(ellipse at 50% 120%, rgba(212,175,85,.08), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 2px, transparent 2px 6px),
+    var(--ink);
+  background-attachment: fixed;
+}
+a { color: var(--gold2); }
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px 80px; }
+/* ---------- header ---------- */
+header { text-align: center; padding: 34px 0 18px; position: relative; }
+.top { display: flex; justify-content: flex-end; padding-top: 14px; }
+.lang { display: flex; border: 1px solid var(--line2); }
+.lang button { background: transparent; color: var(--muted); border: 0; padding: 5px 12px; font: 600 13px "Cinzel", serif; letter-spacing: 1px; cursor: pointer; }
+.lang button.on { background: var(--gold); color: #1a1408; }
+.eyebrow { font: 600 12px "Cinzel", serif; letter-spacing: 6px; color: var(--blood2); text-transform: uppercase; }
+h1 { font: 900 clamp(30px, 6vw, 54px)/1.05 "Cinzel", serif; margin: 10px 0 8px; letter-spacing: 2px;
+  background: linear-gradient(180deg, var(--gold2), var(--gold) 45%, var(--brass)); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 40px rgba(212,175,85,.15); }
+.sub { color: var(--muted); max-width: 640px; margin: 0 auto; font-size: 16px; }
+.orn { display: flex; align-items: center; gap: 14px; justify-content: center; margin: 18px auto 0; max-width: 520px; color: var(--gold); }
+.orn::before, .orn::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--brass), transparent); }
+.orn span { font: 700 18px "Cinzel", serif; letter-spacing: 4px; }
+/* ---------- frames ---------- */
+.frame { position: relative; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line2);
+  box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 4px var(--line), 0 10px 30px rgba(0,0,0,.5); padding: 22px 24px; margin: 22px 0; }
+.frame::before, .frame::after { content: ""; position: absolute; width: 14px; height: 14px; border: 2px solid var(--gold); }
+.frame::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+.frame::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+.ftitle { font: 700 15px "Cinzel", serif; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
+.ftitle::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--brass), transparent); }
+/* ---------- search ---------- */
+form.search { display: flex; gap: 10px; flex-wrap: wrap; }
+form.search input { flex: 1 1 260px; min-width: 0; background: #0e0c0a; border: 1px solid var(--line2); color: var(--bone); padding: 13px 14px; font: 17px "Spectral", serif; outline: none; }
+form.search input:focus { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.btn { background: linear-gradient(180deg, #b52b27, #7a1715); color: #f6e6c4; border: 1px solid #d0463d; padding: 12px 22px; font: 700 14px "Cinzel", serif; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; }
+.btn:hover { filter: brightness(1.12); }
+.hint { color: var(--muted); font-size: 14px; margin-top: 10px; }
+.status { color: var(--muted); margin: 14px 0 0; min-height: 1.4em; font-style: italic; }
+.status.err { color: var(--blood2); font-style: normal; }
+.pick { display: grid; gap: 8px; margin-top: 14px; }
+.pick a { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; background: #100e0b; border: 1px solid var(--line); color: var(--bone); text-decoration: none; }
+.pick a:hover { border-color: var(--gold); }
+.pick small { color: var(--muted); }
+/* ---------- profile ---------- */
+.prof { display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; }
+.portrait { width: 114px; height: 118px; border: 2px solid var(--gold); box-shadow: 0 0 0 3px var(--ink), 0 0 0 4px var(--brass), 0 0 24px rgba(212,175,85,.18); background: #000; display: block; }
+.pname { font: 900 clamp(24px, 4vw, 36px)/1.1 "Cinzel", serif; color: var(--bone); word-break: break-word; }
+.pmeta { color: var(--muted); font-size: 15px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.pmeta img { width: 22px; height: 22px; vertical-align: -5px; }
+.rating { text-align: center; padding: 8px 18px; border-left: 1px solid var(--line); }
+.rating .v { font: 900 46px/1 "Cinzel", serif; color: var(--gold2); }
+.rating .l { font: 600 11px "Cinzel", serif; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-top: 6px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 20px; }
+.stat { background: #100e0b; border: 1px solid var(--line); padding: 10px 12px; }
+.stat .v { font: 700 22px "Cinzel", serif; color: var(--bone); }
+.stat .l { font-size: 13px; color: var(--muted); }
+.v.win { color: var(--win); } .v.loss { color: var(--loss); }
+/* ---------- chart ---------- */
+svg.chart { width: 100%; height: 190px; display: block; }
+.chart .grid { stroke: #2a2318; stroke-width: 1; }
+.chart .axis { fill: var(--muted); font: 12px "Spectral", serif; }
+.chart .line { fill: none; stroke: var(--gold); stroke-width: 2.2; }
+.chart .area { fill: url(#gfill); }
+/* ---------- races & heroes ---------- */
+.races { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.race { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; background: #100e0b; border: 1px solid var(--line); padding: 10px; }
+.race img { width: 44px; height: 44px; }
+.race b { font: 700 14px "Cinzel", serif; display: block; }
+.race small { color: var(--muted); }
+.bar { height: 5px; background: #2a2318; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--brass), var(--gold)); }
+.heroes { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; }
+.hero { text-align: center; }
+.hero img { width: 100%; max-width: 114px; aspect-ratio: 114/118; border: 1px solid var(--line2); display: block; margin: 0 auto 6px; background: #000; }
+.hero b { font: 700 13px "Cinzel", serif; display: block; line-height: 1.2; }
+.hero small { color: var(--muted); font-size: 13px; }
+/* ---------- matches ---------- */
+.match { border: 1px solid var(--line); background: #100e0b; margin-bottom: 8px; }
+.mrow { display: grid; grid-template-columns: 6px 74px 1fr auto auto; gap: 12px; align-items: center; padding: 8px 12px 8px 0; cursor: pointer; }
+.mrow .side { align-self: stretch; }
+.match.w .side { background: var(--win); } .match.l .side { background: var(--loss); }
+.mhero { position: relative; width: 74px; height: 60px; }
+.mhero img.h { width: 58px; height: 60px; border: 1px solid var(--line2); background: #000; }
+.mhero img.r { position: absolute; left: 44px; bottom: -2px; width: 28px; height: 28px; filter: drop-shadow(0 0 2px #000); }
+.mmap { font: 700 15px "Cinzel", serif; }
+.mmeta { color: var(--muted); font-size: 14px; }
+.res { font: 700 13px "Cinzel", serif; letter-spacing: 2px; text-transform: uppercase; }
+.match.w .res { color: var(--win); } .match.l .res { color: var(--loss); }
+.delta { font: 700 16px "Cinzel", serif; min-width: 66px; text-align: right; }
+.delta.up { color: var(--green); } .delta.down { color: var(--blood2); }
+.mdet { display: none; border-top: 1px solid var(--line); padding: 12px; }
+.match.open .mdet { display: block; }
+.teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.team h4 { margin: 0 0 6px; font: 700 12px "Cinzel", serif; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.pl { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 15px; }
+.pl img { width: 28px; height: 29px; border: 1px solid var(--line); background: #000; }
+.pl img.ri { width: 20px; height: 20px; border: 0; background: none; }
+.pl a { color: var(--bone); text-decoration: none; word-break: break-word; }
+.pl a:hover { color: var(--gold2); }
+.pl .rt { margin-left: auto; color: var(--muted); white-space: nowrap; }
+.pl.me a { color: var(--gold2); font-weight: 600; }
+.cnts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; color: var(--muted); font-size: 14px; }
+.cnts b { color: var(--bone); }
+.more { display: block; margin: 14px auto 0; background: transparent; color: var(--gold); border: 1px solid var(--line2); padding: 9px 18px; font: 700 13px "Cinzel", serif; letter-spacing: 2px; cursor: pointer; }
+footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 40px; }
+footer .orn { margin-bottom: 14px; }
+.hidden { display: none !important; }
+@media (max-width: 720px) {
+  .prof { grid-template-columns: auto 1fr; }
+  .rating { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); padding-top: 14px; }
+  .portrait { width: 84px; height: 87px; }
+  .mrow { grid-template-columns: 6px 64px 1fr auto; }
+  .mrow .res { display: none; }
+  .mhero { width: 64px; } .mhero img.h { width: 50px; height: 52px; } .mhero img.r { left: 36px; width: 24px; height: 24px; }
+  .teams { grid-template-columns: 1fr; }
+  .frame { padding: 18px 14px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="lang"><button id="len">EN</button><button id="lru">RU</button></div></div>
+  <header>
+    <div class="eyebrow" data-i="eyebrow"></div>
+    <h1 data-i="title"></h1>
+    <div class="sub" data-i="sub"></div>
+    <div class="orn"><span>✠</span></div>
+  </header>
+
+  <section class="frame">
+    <div class="ftitle" data-i="find"></div>
+    <form class="search" id="form">
+      <input id="q" autocomplete="off" spellcheck="false" maxlength="200">
+      <button class="btn" type="submit" data-i="go"></button>
+    </form>
+    <div class="hint" data-i="hint"></div>
+    <div class="status" id="status"></div>
+    <div class="pick" id="pick"></div>
+  </section>
+
+  <div id="out" class="hidden">
+    <section class="frame">
+      <div class="prof">
+        <img class="portrait" id="pimg" alt="">
+        <div>
+          <div class="pname" id="pname"></div>
+          <div class="pmeta" id="pmeta"></div>
+        </div>
+        <div class="rating"><div class="v" id="prating">—</div><div class="l" data-i="rating"></div></div>
+      </div>
+      <div class="stats" id="pstats"></div>
+    </section>
+
+    <section class="frame" id="chartbox">
+      <div class="ftitle" data-i="history"></div>
+      <div id="chart"></div>
+    </section>
+
+    <section class="frame">
+      <div class="ftitle" data-i="races"></div>
+      <div class="races" id="races"></div>
+      <div class="ftitle" style="margin-top:24px" data-i="heroes"></div>
+      <div class="heroes" id="heroes"></div>
+    </section>
+
+    <section class="frame">
+      <div class="ftitle" data-i="avg"></div>
+      <div class="stats" id="avg" style="margin-top:0"></div>
+    </section>
+
+    <section class="frame">
+      <div class="ftitle" data-i="matches"></div>
+      <div id="matches"></div>
+      <button class="more hidden" id="more" data-i="more"></button>
+    </section>
+  </div>
+
+  <footer>
+    <div class="orn"><span>✠</span></div>
+    <div data-i="foot"></div>
+  </footer>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const T = {
+ en: { eyebrow: '++ Dawn of War II · Retribution · Elite ++', title: 'Commander Archives',
+   sub: 'Every online match is still reported to Relic and rated. Look up any commander: rating, record, favourite races and heroes, recent battles.',
+   find: 'Seek a commander', go: 'Search', ph: 'Nickname, Steam ID or Steam profile link',
+   hint: 'Nickname must match the current Steam name exactly. A Steam ID or profile link always works.',
+   searching: 'Consulting the archives…', none: 'No commander by that name in the Relic archives. Try the Steam ID or profile link.',
+   many: n => n + ' commanders share this name — choose one:', loading: 'Loading the dossier…',
+   rating: 'Relic rating', record: 'Wins – losses', winrate: 'Win rate', peak: 'Peak (seen)', streak: 'Streak', last: 'Last battle',
+   drops: 'Drops', hours: 'Hours in Retribution (Steam)', h2wk: 'h / 2 wk', hprivate: 'profile is private', hhidden: 'not shown by Steam', steam: 'Steam profile', history: 'Rating history', races: 'Races', heroes: 'Heroes', avg: 'Average per battle',
+   matches: 'Recent battles', more: 'Show more', games: n => n + (n === 1 ? ' battle' : ' battles'), wr: p => p + '% wins',
+   victory: 'Victory', defeat: 'Defeat', team: 'Team', lst: 'Last Stand', min: 'min',
+   c: { ukill: 'Units killed', uprod: 'Units produced', pseized: 'Points captured', plost: 'Points lost', hkill: 'Heroes killed', hlost: 'Hero deaths', mvp: 'MVP awards', revived: 'Allies revived', sbuilt: 'Structures built', wg: 'Wargear bought' },
+   sample: n => 'Based on the ' + n + ' battles in our archive.', nochart: 'Not enough rated battles yet.',
+   automatch: 'Old ranked automatch (frozen since years)',
+   foot: 'Data: Relic community API (dow-api.reliclink.com). Relic keeps only the last 10 battles per player, so this archive stores every battle it sees — history grows from the first lookup. Race ids follow Elite Mod.',
+   err: 'Error: ' },
+ ru: { eyebrow: '++ Dawn of War II · Retribution · Elite ++', title: 'Архив командиров',
+   sub: 'Каждый сетевой матч до сих пор уходит на сервер Relic и учитывается в рейтинге. Найдите любого командира: рейтинг, счёт побед, любимые расы и герои, последние бои.',
+   find: 'Найти командира', go: 'Искать', ph: 'Ник, Steam ID или ссылка на профиль Steam',
+   hint: 'Ник должен точно совпадать с текущим именем в Steam. Steam ID или ссылка на профиль срабатывают всегда.',
+   searching: 'Ищем в архивах…', none: 'Командира с таким именем в архивах Relic нет. Попробуйте Steam ID или ссылку на профиль.',
+   many: n => 'Это имя носят ' + n + ' командиров — выберите:', loading: 'Загружаем досье…',
+   rating: 'Рейтинг Relic', record: 'Победы – поражения', winrate: 'Доля побед', peak: 'Пик (в архиве)', streak: 'Серия', last: 'Последний бой',
+   drops: 'Вылеты', hours: 'Часов в Retribution (Steam)', h2wk: 'ч за 2 нед.', hprivate: 'профиль закрыт', hhidden: 'Steam не показывает', steam: 'Профиль Steam', history: 'История рейтинга', races: 'Расы', heroes: 'Герои', avg: 'В среднем за бой',
+   matches: 'Последние бои', more: 'Показать ещё', games: n => n + ' ' + plural(n, 'бой', 'боя', 'боёв'), wr: p => p + '% побед',
+   victory: 'Победа', defeat: 'Поражение', team: 'Команда', lst: 'Last Stand', min: 'мин',
+   c: { ukill: 'Убито юнитов', uprod: 'Произведено юнитов', pseized: 'Захвачено точек', plost: 'Потеряно точек', hkill: 'Убито героев', hlost: 'Гибель героя', mvp: 'Звание MVP', revived: 'Поднято союзников', sbuilt: 'Построено зданий', wg: 'Куплено снаряжения' },
+   sample: n => 'По ' + n + ' ' + plural(n, 'бою', 'боям', 'боям') + ' из нашего архива.', nochart: 'Пока мало боёв с рейтингом.',
+   automatch: 'Старый ранговый автоматч (заморожен много лет)',
+   foot: 'Данные: публичный API Relic (dow-api.reliclink.com). Relic хранит лишь 10 последних боёв игрока, поэтому архив сохраняет всё увиденное — история растёт с первого запроса. Номера рас — как в Elite Mod.',
+   err: 'Ошибка: ' } };
+function plural(n, a, b, c) { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? c : d > 1 && d < 5 ? b : d === 1 ? a : c; }
+let L = (new URLSearchParams(location.search).get('lang')) || (() => { try { return localStorage.getItem('lang'); } catch (e) { return null; } })() || 'en';
+if (!T[L]) L = 'en';
+let META = null, DATA = null, shown = 15;
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const I = p => '/stats/static/icons/' + p + '.png';
+const race = id => META && META.races[id];
+const raceName = id => race(id) ? race(id)[L] : (L === 'ru' ? 'Неизвестно' : 'Unknown');
+const raceIcon = id => race(id) ? I('race_' + race(id).key) : I('race_unknown');
+const hero = (r, h) => race(r) && h != null ? race(r).heroes[h] : null;
+const heroImg = (r, h) => hero(r, h) ? I('h_' + hero(r, h).img) : (race(r) ? I('race_' + race(r).key) : I('race_unknown'));
+const flag = cc => cc && /^[a-z]{2}$/i.test(cc) ? String.fromCodePoint(...cc.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0))) : '';
+const pretty = m => (m || '').replace(/^\dp_|^1v1/i, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim() || m;
+const fmtDate = t => new Date(t * 1000).toLocaleDateString(L === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const hoursText = h => !h ? '—' : h.hours != null ? Math.round(h.hours).toLocaleString(L === 'ru' ? 'ru-RU' : 'en-GB') + (h.h2wk ? ` <small style="font:13px Spectral,serif;color:var(--muted)">+${h.h2wk} ${T[L].h2wk}</small>` : '') : `<small style="font:14px Spectral,serif;color:var(--muted)">${h.privacy === 'private' ? T[L].hprivate : T[L].hhidden}</small>`;
+const size = n => n === 2 ? '1v1' : n === 4 ? '2v2' : n === 6 ? '3v3' : n + 'p';
+
+function applyLang() {
+  document.documentElement.lang = L;
+  document.querySelectorAll('[data-i]').forEach(e => { const v = T[L][e.dataset.i]; if (typeof v === 'string') e.textContent = v; });
+  $('q').placeholder = T[L].ph;
+  $('len').classList.toggle('on', L === 'en'); $('lru').classList.toggle('on', L === 'ru');
+  document.title = DATA ? DATA.alias + ' — ' + T[L].title : T[L].title;
+}
+function setLang(l) { L = l; try { localStorage.setItem('lang', l); } catch (e) {} applyLang(); if (DATA) render(DATA); }
+function status(t, err) { $('status').textContent = t || ''; $('status').className = 'status' + (err ? ' err' : ''); }
+
+async function api(p) {
+  const r = await fetch('/stats/api/' + p);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+async function search(q) {
+  $('pick').innerHTML = ''; status(T[L].searching);
+  try {
+    const { results } = await api('search?q=' + encodeURIComponent(q));
+    if (!results.length) return status(T[L].none, true);
+    if (results.length === 1) return open(results[0].profile_id);
+    status(T[L].many(results.length));
+    $('pick').innerHTML = results.map(r => `<a href="/stats/p/${r.profile_id}"><span>${flag(r.country)} ${esc(r.alias)} <small>· ${esc(r.steam)}</small></span><small>${r.wins}–${r.losses}${r.last ? ' · ' + fmtDate(r.last) : ''}</small></a>`).join('');
+    $('pick').querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); open(a.getAttribute('href').split('/').pop()); });
+  } catch (e) { status(T[L].err + e.message, true); }
+}
+async function open(pid, push = true) {
+  $('pick').innerHTML = ''; status(T[L].loading);
+  try {
+    const d = await api('player/' + pid);
+    DATA = d; shown = 15; status('');
+    if (push) history.pushState({ pid }, '', '/stats/p/' + pid + location.search);
+    render(d); applyLang();
+    if (push) $('out').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { status(T[L].err + e.message, true); }
+}
+
+function render(d) {
+  $('out').classList.remove('hidden');
+  const rc = Object.entries(d.races).sort((a, b) => b[1].games - a[1].games);
+  const hc = Object.entries(d.heroes).filter(([k]) => race(k.split(':')[0])).sort((a, b) => b[1].games - a[1].games);
+  const fav = hc[0] ? hc[0][0].split(':').map(Number) : (rc[0] ? [Number(rc[0][0]), null] : [null, null]);
+  $('pimg').src = heroImg(fav[0], fav[1]);
+  $('pname').textContent = d.alias;
+  $('pmeta').innerHTML = [
+    d.country ? `<span>${flag(d.country)} ${esc(d.country.toUpperCase())}</span>` : '',
+    rc[0] ? `<span><img src="${raceIcon(rc[0][0])}" alt=""> ${esc(raceName(rc[0][0]))}</span>` : '',
+    `<a href="https://steamcommunity.com/profiles/${esc(d.steam)}" target="_blank" rel="noopener noreferrer">${T[L].steam}</a>`
+  ].join('');
+  $('prating').textContent = d.rating || '—';
+  const tot = d.wins + d.losses, wr = tot ? Math.round(d.wins * 100 / tot) : 0;
+  const st = [
+    [T[L].record, `<span class="v win">${d.wins}</span> – <span class="v loss">${d.losses}</span>`],
+    [T[L].winrate, wr + '%'],
+    [T[L].peak, d.peak || '—'],
+    [T[L].streak, d.streak > 0 ? '<span class="v win">+' + d.streak + '</span>' : d.streak < 0 ? '<span class="v loss">' + d.streak + '</span>' : '—'],
+    [T[L].last, d.last ? fmtDate(d.last) : '—'],
+    [T[L].hours, hoursText(d.steam_hours)],
+    [T[L].drops, d.drops]
+  ];
+  $('pstats').innerHTML = st.map(([l, v]) => `<div class="stat"><div class="v">${v}</div><div class="l">${esc(l)}</div></div>`).join('');
+  chart(d.series);
+  $('races').innerHTML = rc.map(([id, r]) => {
+    const p = Math.round(r.wins * 100 / r.games);
+    return `<div class="race"><img src="${raceIcon(id)}" alt=""><div><b>${esc(raceName(id))}</b><small>${T[L].games(r.games)} · ${T[L].wr(p)}</small><div class="bar"><i style="width:${p}%"></i></div></div></div>`;
+  }).join('') || '<div class="hint">—</div>';
+  $('heroes').innerHTML = hc.slice(0, 12).map(([k, h]) => {
+    const [r, i] = k.split(':').map(Number), H = hero(r, i), p = Math.round(h.wins * 100 / h.games);
+    return `<div class="hero"><img src="${heroImg(r, i)}" alt=""><b>${esc(H ? H[L] : '?')}</b><small>${T[L].games(h.games)} · ${p}%</small></div>`;
+  }).join('') || '<div class="hint">—</div>';
+  const keys = ['ukill', 'uprod', 'pseized', 'plost', 'hkill', 'hlost', 'revived', 'wg'];
+  $('avg').innerHTML = (d.sample ? keys.map(k => `<div class="stat"><div class="v">${d.avg[k] ?? 0}</div><div class="l">${esc(T[L].c[k])}</div></div>`).join('')
+    + `<div class="stat"><div class="v">${d.sample ? Math.round((d.avg.mvp || 0) * 100) : 0}%</div><div class="l">${esc(T[L].c.mvp)}</div></div>` : '')
+    + `<div class="hint" style="grid-column:1/-1">${esc(T[L].sample(d.sample))}</div>`;
+  renderMatches();
+}
+
+function chart(s) {
+  if (!s || s.length < 2) { $('chart').innerHTML = `<div class="hint">${esc(T[L].nochart)}</div>`; return; }
+  const W = Math.max(300, $('chart').clientWidth || 1000), H = 190, P = { l: 46, r: 10, t: 12, b: 26 };
+  const xs = s.map(p => p[0]), ys = s.map(p => p[1]);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); const pad = Math.max(10, (y1 - y0) * .12); y0 -= pad; y1 += pad;
+  const X = i => P.l + (W - P.l - P.r) * (s.length === 1 ? 0 : i / (s.length - 1));
+  const Y = v => P.t + (H - P.t - P.b) * (1 - (v - y0) / (y1 - y0));
+  const pts = s.map((p, i) => X(i).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ');
+  let grid = '';
+  for (let k = 0; k <= 3; k++) { const v = y0 + (y1 - y0) * k / 3, y = Y(v); grid += `<line class="grid" x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}"/><text class="axis" x="${P.l - 6}" y="${y + 4}" text-anchor="end">${Math.round(v)}</text>`; }
+  grid += `<text class="axis" x="${P.l}" y="${H - 6}">${fmtDate(xs[0])}</text><text class="axis" x="${W - P.r}" y="${H - 6}" text-anchor="end">${fmtDate(xs[xs.length - 1])}</text>`;
+  $('chart').innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" ><defs><linearGradient id="gfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4af55" stop-opacity=".28"/><stop offset="1" stop-color="#d4af55" stop-opacity="0"/></linearGradient></defs>${grid}<polygon class="area" points="${P.l},${H - P.b} ${pts} ${X(s.length - 1)},${H - P.b}"/><polyline class="line" points="${pts}"/></svg>`;
+}
+
+function renderMatches() {
+  const d = DATA, list = d.matches.slice(0, shown);
+  $('matches').innerHTML = list.map((m, idx) => {
+    const delta = (m.new || 0) - (m.old || 0), ls = m.type === 5;
+    const teams = {};
+    m.players.forEach(p => (teams[p.team] = teams[p.team] || []).push(p));
+    const tk = Object.keys(teams).sort((a, b) => (a == m.team ? -1 : b == m.team ? 1 : a - b));
+    const tm = tk.map(k => `<div class="team"><h4>${T[L].team} ${Number(k) + 1} · ${teams[k][0].win ? T[L].victory : T[L].defeat}</h4>${teams[k].map(p =>
+      `<div class="pl${p.profile_id === d.profile_id ? ' me' : ''}"><img src="${heroImg(p.race, p.hero)}" alt=""><img class="ri" src="${raceIcon(p.race)}" alt=""><a href="/stats/p/${p.profile_id}" data-pid="${p.profile_id}">${esc(p.alias || '#' + p.profile_id)}</a><span class="rt">${p.rating || ''}${p.delta ? ' <span style="color:' + (p.delta > 0 ? 'var(--green)' : 'var(--blood2)') + '">' + (p.delta > 0 ? '+' : '') + p.delta + '</span>' : ''}</span></div>`).join('')}</div>`).join('');
+    const cn = Object.entries(m.counters).filter(([k]) => T[L].c[k]).map(([k, v]) => `<span>${esc(T[L].c[k])}: <b>${v}</b></span>`).join('');
+    const H = hero(m.race, m.hero);
+    return `<div class="match ${m.win ? 'w' : 'l'}" data-i="${idx}"><div class="mrow"><div class="side"></div>
+      <div class="mhero"><img class="h" src="${heroImg(m.race, m.hero)}" alt=""><img class="r" src="${raceIcon(m.race)}" alt=""></div>
+      <div><div class="mmap">${esc(pretty(m.map))}</div><div class="mmeta">${ls ? T[L].lst : size(m.size)} · ${Math.round(m.duration / 60)} ${T[L].min} · ${fmtDate(m.start)}${H ? ' · ' + esc(H[L]) : ''}${m.name ? ' · «' + esc(m.name) + '»' : ''}</div></div>
+      <div class="res">${m.win ? T[L].victory : T[L].defeat}</div>
+      <div class="delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${ls || !m.new ? '' : (delta > 0 ? '+' : '') + delta}</div></div>
+      <div class="mdet"><div class="teams">${tm}</div><div class="cnts">${cn}</div></div></div>`;
+  }).join('');
+  $('matches').querySelectorAll('.mrow').forEach(r => r.onclick = () => r.parentNode.classList.toggle('open'));
+  $('matches').querySelectorAll('a[data-pid]').forEach(a => a.onclick = e => { e.preventDefault(); open(a.dataset.pid); });
+  $('more').classList.toggle('hidden', d.matches.length <= shown);
+}
+$('more').onclick = () => { shown += 15; renderMatches(); };
+$('form').onsubmit = e => { e.preventDefault(); const q = $('q').value.trim(); if (q) search(q); };
+$('len').onclick = () => setLang('en'); $('lru').onclick = () => setLang('ru');
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => DATA && chart(DATA.series), 200); });
+window.onpopstate = () => { const m = location.pathname.match(/\/stats\/p\/(\d+)/); if (m) open(m[1], false); };
+applyLang();
+api('meta').then(m => { META = m; const p = location.pathname.match(/\/stats\/p\/(\d+)/); if (p) open(p[1], false); const q = new URLSearchParams(location.search).get('q'); if (q) { $('q').value = q; search(q); } });
+</script>
+</body>
+</html>

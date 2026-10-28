@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Отзывы — Elite Launcher</title>
+<style>
+:root { --bg:#0d0b09; --panel:#16130f; --line:#3a3124; --gold:#d9b25f; --gold2:#f0d48f; --text:#e6dccb; --muted:#a39782; --dev:#1d2a1a; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 Georgia, serif; }
+.wrap { display:grid; grid-template-columns: 320px 1fr; height:100vh; }
+.list { border-right:1px solid var(--line); overflow:auto; }
+.list h1 { font-size:16px; color:var(--gold2); margin:0; padding:12px 14px; border-bottom:1px solid var(--line); letter-spacing:.06em; }
+.th { padding:10px 14px; border-bottom:1px solid #241f17; cursor:pointer; }
+.th:hover, .th.on { background:#1d1811; }
+.th .n { font-weight:600; } .th .u { color:var(--muted); font-size:12px; }
+.th .x { color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.badge { background:#c42a24; color:#fff; border-radius:9px; padding:0 7px; font-size:12px; margin-left:6px; }
+.chat { display:flex; flex-direction:column; min-width:0; }
+.msgs { flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.m { max-width:75%; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px 12px; white-space:pre-wrap; word-wrap:break-word; }
+.m.dev { align-self:flex-end; background:var(--dev); border-color:#2f5a24; }
+.m .h { font-size:12px; color:var(--muted); margin-bottom:4px; }
+.m img { max-width:100%; max-height:360px; display:block; margin-top:6px; border-radius:4px; cursor:zoom-in; }
+.send { display:flex; gap:8px; padding:10px; border-top:1px solid var(--line); }
+textarea { flex:1; min-height:60px; background:#0e0c09; color:var(--text); border:1px solid #5a4a2e; border-radius:4px; padding:8px; font:inherit; }
+button { background:linear-gradient(#3a2a12,#22190c); color:var(--gold2); border:1px solid #5a4a2e; border-radius:4px; padding:0 18px; font:inherit; cursor:pointer; }
+.login { max-width:420px; margin:80px auto; display:flex; gap:8px; }
+.login input { flex:1; background:#0e0c09; color:var(--text); border:1px solid #5a4a2e; padding:8px; border-radius:4px; }
+.empty { color:var(--muted); padding:20px; }
+@media (max-width:760px) { .wrap { grid-template-columns:1fr; } .list { max-height:35vh; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+let token = localStorage.getItem('fbToken') || new URLSearchParams(location.hash.slice(1)).get('token') || '';
+let cur = null;
+const api = (q) => fetch('/ladder/api/fb/admin?token=' + encodeURIComponent(token) + (q || ''), { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject(r.status));
+const when = ts => new Date(ts * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+function login() {
+  $('#app').innerHTML = '<div class="login"><input id="tok" placeholder="токен (data/fb_admin_token)"><button id="go">Войти</button></div>';
+  $('#go').onclick = () => { token = $('#tok').value.trim(); localStorage.setItem('fbToken', token); start(); };
+}
+async function start() {
+  try { await api(); } catch (e) { localStorage.removeItem('fbToken'); return login(); }
+  $('#app').innerHTML = '<div class="wrap"><div class="list"><h1>Отзывы из лаунчера</h1><div id="threads"></div></div>' +
+    '<div class="chat"><div class="msgs" id="msgs"><div class="empty">Выберите переписку слева</div></div>' +
+    '<div class="send"><textarea id="txt" placeholder="Ответ игроку (Ctrl+Enter — отправить)"></textarea><button id="snd">Ответить</button></div></div></div>';
+  $('#snd').onclick = reply; $('#txt').onkeydown = e => { if (e.key === 'Enter' && e.ctrlKey) reply(); };
+  loadThreads(); setInterval(loadThreads, 10000); setInterval(() => cur && openThread(cur, true), 10000);
+}
+async function loadThreads() {
+  const d = await api().catch(() => ({ threads: [] }));
+  $('#threads').innerHTML = d.threads.map(t => `<div class="th ${t.uid === cur ? 'on' : ''}" data-u="${esc(t.uid)}">
+    <div class="n">${esc(t.name || 'без имени')}${t.unseen ? `<span class="badge">${t.unseen}</span>` : ''}</div>
+    <div class="u">${esc(t.uid.slice(0, 8))} · ${t.count} сообщ. · ${when(t.ts)}</div>
+    <div class="x">${t.last.author === 'dev' ? '↩ ' : ''}${esc(t.last.text) || '🖼 картинка'}</div></div>`).join('') || '<div class="empty">Отзывов пока нет</div>';
+  document.querySelectorAll('.th').forEach(el => el.onclick = () => openThread(el.dataset.u));
+}
+async function openThread(uid, quiet) {
+  cur = uid; const d = await api('&uid=' + encodeURIComponent(uid)).catch(() => ({ messages: [] }));
+  const box = $('#msgs'), atEnd = box.scrollTop + box.clientHeight > box.scrollHeight - 30;
+  box.innerHTML = d.messages.map(m => `<div class="m ${m.author === 'dev' ? 'dev' : ''}"><div class="h">${esc(m.author === 'dev' ? 'Elite dev' : (m.name || 'игрок'))} · ${when(m.ts)}</div>${esc(m.text)}` +
+    m.images.map(f => `<a href="/ladder/api/fb/img/${f}?token=${encodeURIComponent(token)}" target="_blank"><img src="/ladder/api/fb/img/${f}?token=${encodeURIComponent(token)}"></a>`).join('') + '</div>').join('');
+  if (!quiet || atEnd) box.scrollTop = box.scrollHeight;
+  if (!quiet) loadThreads();
+}
+async function reply() {
+  const text = $('#txt').value.trim(); if (!text || !cur) return;
+  const r = await fetch('/ladder/api/fb/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, uid: cur, text }) }).then(r => r.json()).catch(() => ({}));
+  if (r.ok) { $('#txt').value = ''; openThread(cur); } else alert('Не отправилось: ' + JSON.stringify(r));
+}
+token ? start() : login();
+</script>
+</body>
+</html>

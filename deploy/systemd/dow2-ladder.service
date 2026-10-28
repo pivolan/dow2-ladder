@@ -1,0 +1,32 @@
+[Unit]
+Description=DoW2 Elite ladder (Glicko-2 rating from Relic API, https://rts.fintebtc.de/ladder/)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ladder
+Group=ladder
+WorkingDirectory=/srv/ladder
+ExecStart=/usr/bin/python3 /srv/ladder/app/ladder.py
+Restart=always
+RestartSec=3
+UMask=0027
+ProtectSystem=strict
+ReadWritePaths=/srv/ladder/data
+ReadOnlyPaths=/srv/relicstats/data
+ProtectHome=yes
+InaccessiblePaths=/var/www /mnt /etc/nginx /etc/supervisor /usr/local/bin /root /var/log
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

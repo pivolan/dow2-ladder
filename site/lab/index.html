@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Elite Lab — experiments</title>
+<meta name="description" content="Experimental add-ons and tools for Elite Mod (Dawn of War II: Retribution): lobby rating and host filter, diagnostics, stats, replay analysis.">
+<style>
+@font-face { font-family: Cinzel; src: url(../fonts/cinzel-700.ttf); font-weight: 700; font-display: swap; }
+@font-face { font-family: Cinzel; src: url(../fonts/cinzel-900.ttf); font-weight: 900; font-display: swap; }
+@font-face { font-family: CinzelCyr; src: url(../fonts/cormorantsc-cyr-700.ttf); font-weight: 700 900; unicode-range: U+0400-045F, U+0490-0491, U+2116; font-display: swap; }
+@font-face { font-family: Spectral; src: url(../fonts/spectral-400.ttf); font-weight: 400; font-display: swap; }
+@font-face { font-family: Spectral; src: url(../fonts/spectral-600.ttf); font-weight: 600; font-display: swap; }
+:root {
+  --bg: #0d0b09; --panel: #16130f; --line: #3a3124; --gold: #d9b25f; --gold-2: #f0d48f;
+  --text: #e6dccb; --muted: #a39782; --red: #9e1b1b; --red-2: #c42a24; --demo: #e0a526;
+  --ok: #6fbf73; --test: #e0a526; --diag: #7fa7d9;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 18px/1.6 Spectral, Georgia, serif; }
+a { color: var(--gold); }
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
+.top { border-bottom: 1px solid var(--line); background: #110e0b; font-size: 15px; }
+.top .wrap { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+.top a { text-decoration: none; }
+.langs a { cursor: pointer; margin-left: 10px; color: var(--muted); font-weight: 600; }
+.langs a.on { color: var(--gold-2); }
+.hero { text-align: center; padding: 54px 0 34px; border-bottom: 1px solid var(--line);
+  background: radial-gradient(ellipse at 50% 0%, #2b1a0b 0%, #160f09 50%, var(--bg) 85%); }
+.kicker { font: 700 14px Cinzel, CinzelCyr, serif; letter-spacing: .35em; color: var(--red-2); text-transform: uppercase; }
+h1 { font: 900 clamp(32px, 6vw, 56px) Cinzel, CinzelCyr, serif; color: var(--gold-2); margin: 8px 0 12px; letter-spacing: .04em; }
+.lead { color: var(--text); max-width: 720px; margin: 0 auto; }
+.warn { max-width: 720px; margin: 18px auto 0; font-size: 15px; color: #f6e2b0; border: 1px solid #6b4f12; background: #1f1706; padding: 10px 14px; }
+section { padding: 44px 0; border-bottom: 1px solid var(--line); }
+h2 { font: 700 clamp(24px, 4vw, 32px) Cinzel, CinzelCyr, serif; color: var(--gold); margin: 0 0 18px; letter-spacing: .04em; }
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.card { background: linear-gradient(#1a1611, #13100c); border: 1px solid var(--line); padding: 22px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card h3 { font: 700 21px Cinzel, CinzelCyr, serif; color: var(--gold-2); margin: 0; letter-spacing: .03em; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.ver { font: 600 14px Spectral, serif; color: var(--muted); letter-spacing: 0; }
+.badge { font: 700 11px Cinzel, CinzelCyr, serif; letter-spacing: .14em; padding: 2px 8px; border-radius: 2px; color: #120d05; text-transform: uppercase; }
+.b-ok { background: var(--ok); } .b-test { background: var(--test); } .b-diag { background: var(--diag); }
+.card p { margin: 0; font-size: 17px; }
+.card ul { margin: 0; padding-left: 20px; font-size: 16px; color: var(--text); }
+.card small { color: var(--muted); font-size: 14px; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
+.btn { display: inline-block; text-decoration: none; padding: 9px 16px; border: 1px solid var(--gold); color: var(--gold-2); font-weight: 600; font-size: 16px; }
+.btn.main { background: linear-gradient(#b3241f, #7e1512); border-color: #e05a4f; color: #fff3df; }
+.btn:hover { filter: brightness(1.15); }
+code { background: #221c14; padding: 1px 6px; font-size: 15px; word-break: break-word; }
+ol.steps { margin: 0; padding-left: 22px; }
+ol.steps li { margin-bottom: 8px; }
+footer { padding: 30px 0 50px; color: var(--muted); font-size: 15px; text-align: center; }
+@media (max-width: 760px) { .cards { grid-template-columns: 1fr; } .hero { padding: 40px 0 26px; } }
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap">
+  <a href="../" data-i="back">← Elite Launcher</a>
+  <span class="langs" id="langs"><a data-l="en">EN</a><a data-l="ru">RU</a></span>
+</div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="kicker" data-i="kick">Elite Lab</div>
+  <h1 data-i="h1">Experiments</h1>
+  <p class="lead" data-i="lead">Add-ons and tools we are testing with the community. Easiest way: install the launcher and tick them in “Add-ons” — they update themselves. Or download each one below.</p>
+  <div class="warn" data-i="warn">These are prototypes made by a community member, not by the Elite team. If the game crashes, press “Send logs” in the launcher before starting the game again.</div>
+</div></header>
+
+<section><div class="wrap">
+  <h2 data-i="h_addons">In-game add-ons</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>LobbyStats <span class="ver">v0.7.0</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="ls_p">Relic rating next to every name in the lobby, a tooltip with win rate, games and Steam hours. Only shows information, never kicks anyone.</p>
+      <ul>
+        <li data-i="ls_1">Rating next to the name: <code>pivolan [2061]</code></li>
+        <li data-i="ls_2">Hover a player: rating, win rate, wins/losses, games, Steam hours</li>
+      </ul>
+      <div class="btns">
+        <a class="btn main" href="dl/LobbyStats-0.7.0.zip" data-i="dl_zip">Download .zip</a>
+        <a class="btn" href="/stats/" data-i="ls_web">Stats on the web</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>FrameProbe <span class="ver">v9</span> <span class="badge b-diag" data-i="b_diag">diagnostics</span></h3>
+      <p data-i="fp_p">Developer logs: what slows the game down when you spectate, and what the game sees when you press Continue after a match. Doesn't change the game.</p>
+      <ul>
+        <li data-i="fp_1">Observer: FPS, frame times, simulation ticks every 10 seconds</li>
+        <li data-i="fp_2">Continue: state of the score screen at the moment of the click</li>
+        <li data-i="fp_3">v8: no crashes at start or on Continue after a replay</li>
+      </ul>
+      <div class="btns">
+        <a class="btn main" href="dl/FrameProbe-v9.zip" data-i="dl_zip">Download .zip</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>ObsFix <span class="ver">v1</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="of_p">Fix for observer lag: while spectating a live game the game rebuilt the whole match info dozens of times per frame just to find its own slot. ObsFix remembers the answer.</p>
+      <ul><li data-i="of_1">Live spectating only; players and replays are not affected</li><li data-i="of_2">Off by default in the launcher — tick it, spectate, send logs</li></ul>
+      <div class="btns"><a class="btn main" href="dl/ObsFix-v1.zip" data-i="dl_zip">Download .zip</a></div>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 data-i="h_tools">Launcher and web tools</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>Elite Launcher <span class="ver">1.2.4</span> <span class="badge b-ok" data-i="b_ok">works</span></h3>
+      <p data-i="la_p">Installs Elite, switches between main, beta and archive versions, installs the add-ons above with one tick, and sends logs to the developer with one button.</p>
+      <div class="btns">
+        <a class="btn main" href="../dl/EliteLauncher-1.2.12-setup.exe">Windows</a>
+        <a class="btn" href="../dl/EliteLauncher-1.2.12-windows-portable.zip" data-i="la_port">Windows portable</a>
+        <a class="btn" href="../dl/EliteLauncher-1.2.12.AppImage">Linux</a>
+        <a class="btn" href="../dl/EliteLauncher-1.2.12-mac.zip">macOS</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3 data-i="st_h">Player stats</h3>
+      <p data-i="st_p">Relic rating, win rate by race and recent matches of any Elite player — the same data the lobby add-on shows.</p>
+      <div class="btns"><a class="btn main" href="/stats/" data-i="open">Open</a></div>
+    </div>
+    <div class="card">
+      <h3 data-i="rp_h">Replay analysis</h3>
+      <p data-i="rp_p">Upload a .rec file and get a report: build orders, army, key moments, and a short story of the match.</p>
+      <div class="btns"><a class="btn main" href="/replay/" data-i="open">Open</a></div>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 data-i="h_manual">Install an add-on by hand</h2>
+  <ol class="steps">
+    <li data-i="m1">Put the .dll from the zip into <code>&lt;Steam&gt;\steamapps\common\Dawn of War II - Retribution\Elite_DLLs\</code></li>
+    <li data-i="m2">Open <code>Elite.launchconfig</code> in the same game folder with Notepad and add <code>, LobbyStats.dll</code> (or <code>, FrameProbe.dll</code>) to the end of the <code>InjectedFiles=</code> line.</li>
+    <li data-i="m3">Start Elite as usual. The add-on writes its log next to the dll; the first line shows its version.</li>
+  </ol>
+</div></section>
+
+<footer><div class="wrap" data-i="ft">Community prototypes. Elite Mod is made by the Elite team; this page is not theirs. Dawn of War II is a trademark of Games Workshop, Relic Entertainment and SEGA.</div></footer>
+
+<script>
+var RU = {
+  back: "← Elite Launcher", kick: "Elite Lab", h1: "Эксперименты",
+  lead: "Дополнения и инструменты, которые мы проверяем вместе с сообществом. Проще всего — поставить лаунчер и отметить их галочками в «Дополнениях»: они обновляются сами. Или скачать каждое по отдельности ниже.",
+  warn: "Это прототипы участника сообщества, не команды Elite. Если игра вылетела — нажмите «Отправить логи» в лаунчере до следующего запуска игры.",
+  h_addons: "Дополнения для игры", b_test: "тест", b_diag: "диагностика", b_ok: "работает",
+  ls_p: "Рейтинг Relic рядом с каждым ником в лобби, подсказка с винрейтом, числом игр и часами в Steam. Только показывает, никого не кикает.",
+  ls_1: "Рейтинг рядом с ником: <code>pivolan [2061]</code>",
+  ls_2: "Наведи на игрока: рейтинг, винрейт, победы/поражения, игры, часы в Steam",
+  dl_zip: "Скачать .zip", ls_web: "Статистика на сайте",
+  fp_p: "Логи для разработчика: из-за чего тормозит игра в режиме обсервера и что видит игра при нажатии Continue после матча. Игру не меняет.",
+  fp_1: "Обсервер: FPS, время кадров, тики симуляции каждые 10 секунд",
+  fp_2: "Continue: состояние экрана итогов в момент нажатия",
+  fp_3: "v8: не вылетает ни при запуске, ни на «Продолжить» после реплея",
+  h_tools: "Лаунчер и веб-инструменты",
+  la_p: "Ставит Elite, переключает основную, бету и архивные версии, ставит дополнения выше одной галочкой и отправляет логи разработчику одной кнопкой.",
+  la_port: "Windows без установки",
+  st_h: "Статистика игроков", st_p: "Рейтинг Relic, винрейт по расам и последние матчи любого игрока Elite — те же данные, что показывает дополнение в лобби.",
+  rp_h: "Разбор реплеев", rp_p: "Загрузите файл .rec и получите отчёт: билды, армия, ключевые моменты и короткая история матча.",
+  open: "Открыть",
+  of_p: "Исправление тормозов обсервера: при просмотре живой игры игра десятки раз за кадр пересобирала всю информацию о матче, только чтобы найти свой слот. ObsFix запоминает ответ.",
+  of_1: "Только живой просмотр обсом; игроков и реплеи не затрагивает",
+  of_2: "В лаунчере выключено по умолчанию — включи, посмотри обсом, отправь логи",
+  h_manual: "Поставить дополнение вручную",
+  m1: "Положите .dll из архива в <code>&lt;Steam&gt;\\steamapps\\common\\Dawn of War II - Retribution\\Elite_DLLs\\</code>",
+  m2: "Откройте <code>Elite.launchconfig</code> в той же папке игры Блокнотом и допишите <code>, LobbyStats.dll</code> (или <code>, FrameProbe.dll</code>) в конец строки <code>InjectedFiles=</code>.",
+  m3: "Запустите Elite как обычно. Дополнение пишет лог рядом с dll; в первой строке — его версия.",
+  ft: "Прототипы от сообщества. Elite Mod делает команда Elite; эта страница не их. Dawn of War II — торговая марка Games Workshop, Relic Entertainment и SEGA."
+};
+var EN = {};
+document.querySelectorAll("[data-i]").forEach(function (e) { EN[e.dataset.i] = e.innerHTML; });
+function setLang(l) {
+  var d = l === "ru" ? RU : EN;
+  document.querySelectorAll("[data-i]").forEach(function (e) { if (d[e.dataset.i] != null) e.innerHTML = d[e.dataset.i]; });
+  document.documentElement.lang = l === "ru" ? "ru" : "en";
+  document.title = l === "ru" ? "Elite Lab — эксперименты" : "Elite Lab — experiments";
+  document.querySelectorAll("#langs a").forEach(function (a) { a.classList.toggle("on", a.dataset.l === (l === "ru" ? "ru" : "en")); });
+}
+var q = new URLSearchParams(location.search).get("lang"), saved = null;
+try { saved = localStorage.getItem("lang"); } catch (e) {}
+var lang = q || saved || ((navigator.language || "").slice(0, 2) === "ru" ? "ru" : "en");
+setLang(lang);
+document.querySelectorAll("#langs a").forEach(function (a) { a.onclick = function () { try { localStorage.setItem("lang", a.dataset.l); } catch (e) {} setLang(a.dataset.l); }; });
+</script>
+</body>
+</html>

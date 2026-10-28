@@ -1,0 +1,33 @@
+[Unit]
+Description=DoW2 own battle relay (replaces Relic battleserverrelay for players with the add-on)
+After=network.target
+[Service]
+DynamicUser=yes
+StateDirectory=dow2battle
+Environment=RELAY_LOG=/var/lib/dow2battle/battle.jsonl
+ExecStart=/usr/bin/python3 /srv/dow2battle/battle_relay.py 47100 0.0.0.0
+Restart=always
+RestartSec=3
+ProtectSystem=strict
+ProtectHome=yes
+NoNewPrivileges=yes
+MemoryMax=512M
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description=DoW2 relay proxy (forwards to Relic battleserverrelay)
+After=network.target
+[Service]
+DynamicUser=yes
+StateDirectory=dow2relay
+Environment=RELAY_LOG=/var/lib/dow2relay
+ExecStart=/usr/bin/python3 /srv/dow2relay/relay_proxy.py
+Restart=always
+RestartSec=3
+ProtectSystem=strict
+ProtectHome=yes
+NoNewPrivileges=yes
+MemoryMax=512M
+[Install]
+WantedBy=multi-user.target

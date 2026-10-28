@@ -1,0 +1,6 @@
+[Unit]
+Description=Watch Elite launcher log uploads
+[Path]
+PathChanged=/srv/relicstats/logs
+[Install]
+WantedBy=multi-user.target

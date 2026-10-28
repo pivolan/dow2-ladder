@@ -1,0 +1,817 @@
+{
+ "races": {
+  "chaos_marines": {
+   "name": "Chaos Space Marines",
+   "ui_index": 0,
+   "playable": true,
+   "path_name": "race_chaos",
+   "icon": "races/chaos_marines.png",
+   "heroes": [
+    {
+     "name": "Chaos Lord",
+     "role": "Attacker",
+     "sbp": "sbps/pvp/race_chaos/heroes/csm_chaos_lord",
+     "icon": "heroes/chaos_marines_0.png"
+    },
+    {
+     "name": "Plague Champion",
+     "role": "Defender",
+     "sbp": "sbps/pvp/race_chaos/heroes/csm_plague_marine_champion",
+     "icon": "heroes/chaos_marines_1.png"
+    },
+    {
+     "name": "Chaos Sorcerer",
+     "role": "Support",
+     "sbp": "sbps/pvp/race_chaos/heroes/csm_sorceror",
+     "icon": "heroes/chaos_marines_2.png"
+    }
+   ]
+  },
+  "eldar": {
+   "name": "Eldar",
+   "ui_index": 1,
+   "playable": true,
+   "path_name": "race_eldar",
+   "icon": "races/eldar.png",
+   "heroes": [
+    {
+     "name": "Warlock",
+     "role": "Offense",
+     "sbp": "sbps/pvp/race_eldar/heroes/eld_warlock",
+     "icon": "heroes/eldar_0.png"
+    },
+    {
+     "name": "Warp Spider Exarch",
+     "role": "Teleport",
+     "sbp": "sbps/pvp/race_eldar/heroes/eld_warp_spider",
+     "icon": "heroes/eldar_1.png"
+    },
+    {
+     "name": "Farseer",
+     "role": "Support",
+     "sbp": "sbps/pvp/race_eldar/heroes/eld_farseer",
+     "icon": "heroes/eldar_2.png"
+    }
+   ]
+  },
+  "imperial_guard": {
+   "name": "Imperial Guard",
+   "ui_index": 2,
+   "playable": true,
+   "path_name": "race_imperial_guard",
+   "icon": "races/imperial_guard.png",
+   "heroes": [
+    {
+     "name": "Inquisitor",
+     "role": "Offense",
+     "sbp": "sbps/pvp/race_imperial_guard/heroes/ig_inquisitor",
+     "icon": "heroes/imperial_guard_0.png"
+    },
+    {
+     "name": "Commissar",
+     "role": "Support",
+     "sbp": "sbps/pvp/race_imperial_guard/heroes/ig_commissar_lord",
+     "icon": "heroes/imperial_guard_1.png"
+    },
+    {
+     "name": "Lord General",
+     "role": "Defense",
+     "sbp": "sbps/pvp/race_imperial_guard/heroes/ig_commander",
+     "icon": "heroes/imperial_guard_2.png"
+    }
+   ]
+  },
+  "ordo_malleus": {
+   "name": "Ordo Malleus",
+   "ui_index": 3,
+   "playable": true,
+   "path_name": "race_ordomalleus",
+   "icon": "races/ordo_malleus.png",
+   "heroes": [
+    {
+     "name": "Brother-Captain",
+     "role": "Offense",
+     "sbp": "sbps/pvp/race_grey_knights/heroes/gk_brother_captain",
+     "icon": "heroes/ordo_malleus_0.png"
+    },
+    {
+     "name": "Eversor Assassin",
+     "role": "Attacker",
+     "sbp": "sbps/pvp/race_grey_knights/heroes/gk_eversor_assassin",
+     "icon": "heroes/ordo_malleus_1.png"
+    },
+    {
+     "name": "Daemonhunter",
+     "role": "Support",
+     "sbp": "sbps/pvp/race_grey_knights/heroes/gk_daemonhunter",
+     "icon": "heroes/ordo_malleus_2.png"
+    }
+   ]
+  },
+  "orks": {
+   "name": "Orks",
+   "ui_index": 4,
+   "playable": true,
+   "path_name": "race_ork",
+   "icon": "races/orks.png",
+   "heroes": [
+    {
+     "name": "Warboss",
+     "role": "Offense",
+     "sbp": "sbps/pvp/race_ork/heroes/ork_warboss",
+     "icon": "heroes/orks_0.png"
+    },
+    {
+     "name": "Kommando Nob",
+     "role": "Stealth",
+     "sbp": "sbps/pvp/race_ork/heroes/ork_hero_kommando",
+     "icon": "heroes/orks_1.png"
+    },
+    {
+     "name": "Mekboy",
+     "role": "Support",
+     "sbp": "sbps/pvp/race_ork/heroes/ork_hero_mekboy",
+     "icon": "heroes/orks_2.png"
+    }
+   ]
+  },
+  "space_marines": {
+   "name": "Space Marines",
+   "ui_index": 5,
+   "playable": true,
+   "path_name": "race_marine",
+   "icon": "races/space_marines.png",
+   "heroes": [
+    {
+     "name": "Force Commander",
+     "role": "Offense",
+     "sbp": "sbps/pvp/race_marine/heroes/sm_force_commander",
+     "icon": "heroes/space_marines_0.png"
+    },
+    {
+     "name": "Apothecary",
+     "role": "Healer",
+     "sbp": "sbps/pvp/race_marine/heroes/sm_apothecary",
+     "icon": "heroes/space_marines_1.png"
+    },
+    {
+     "name": "Techmarine",
+     "role": "Defense",
+     "sbp": "sbps/pvp/race_marine/heroes/sm_techmarine",
+     "icon": "heroes/space_marines_2.png"
+    }
+   ]
+  },
+  "t_tau": {
+   "name": "Tau",
+   "ui_index": 6,
+   "playable": true,
+   "path_name": "race_newrace",
+   "icon": "races/t_tau.png",
+   "heroes": [
+    {
+     "name": "XV-8 Crisis Commander",
+     "role": "Offense",
+     "sbp": "sbps/pvp/race_tau/heroes/tau_xv8_crisis_commander",
+     "icon": "heroes/t_tau_0.png"
+    },
+    {
+     "name": "Ethereal",
+     "role": "Support",
+     "sbp": "sbps/pvp/race_tau/heroes/tau_ethereal",
+     "icon": "heroes/t_tau_1.png"
+    }
+   ]
+  },
+  "tyranids": {
+   "name": "Tyranids",
+   "ui_index": 7,
+   "playable": true,
+   "path_name": "race_tyranid",
+   "icon": "races/tyranids.png",
+   "heroes": [
+    {
+     "name": "Hive Tyrant",
+     "role": "Attacker",
+     "sbp": "sbps/pvp/race_tyranid/heroes/tyr_hive_tyrant",
+     "icon": "heroes/tyranids_0.png"
+    },
+    {
+     "name": "Ravener Alpha",
+     "role": "Defender",
+     "sbp": "sbps/pvp/race_tyranid/heroes/tyr_hero_ravener",
+     "icon": "heroes/tyranids_1.png"
+    },
+    {
+     "name": "Lictor Alpha",
+     "role": "Ambush",
+     "sbp": "sbps/pvp/race_tyranid/heroes/tyr_hero_lictor",
+     "icon": "heroes/tyranids_2.png"
+    }
+   ]
+  },
+  "z_unecron": {
+   "name": "Necron",
+   "ui_index": 8,
+   "playable": false,
+   "path_name": "race_necron2",
+   "icon": "races/z_unecron.png",
+   "heroes": [],
+   "note": "not playable in Elite 3.2; its racebps hero_list is a placeholder copy of Imperial Guard"
+  }
+ },
+ "maps": {
+  "1v1typhonlowlands": {
+   "name": "(2p) Green Tooth Gorge",
+   "maxplayers": 2,
+   "minimap": "maps/1v1typhonlowlands.png",
+   "minimap_plain": "maps_plain/1v1typhonlowlands.png"
+  },
+  "2p_ashesoftyphon": {
+   "name": "(2p) Ashes of Typhon",
+   "maxplayers": 2,
+   "minimap": "maps/2p_ashesoftyphon.png",
+   "minimap_plain": "maps_plain/2p_ashesoftyphon.png"
+  },
+  "2p_ashesoftyphon_redux": {
+   "name": "(2p) Ashes of Typhon Redux",
+   "maxplayers": 2,
+   "minimap": "maps/2p_ashesoftyphon_redux.png",
+   "minimap_plain": "maps_plain/2p_ashesoftyphon_redux.png"
+  },
+  "2p_bay_of_grots": {
+   "name": "(2p) Bay of Grots",
+   "maxplayers": 2,
+   "minimap": "maps/2p_bay_of_grots.png",
+   "minimap_plain": "maps_plain/2p_bay_of_grots.png"
+  },
+  "2p_calderis_desert": {
+   "name": "(2p) Calderis Desert",
+   "maxplayers": 2,
+   "minimap": "maps/2p_calderis_desert.png",
+   "minimap_plain": "maps_plain/2p_calderis_desert.png"
+  },
+  "2p_calderis_jungle": {
+   "name": "(2p) Calderis Jungle",
+   "maxplayers": 2,
+   "minimap": "maps/2p_calderis_jungle.png",
+   "minimap_plain": "maps_plain/2p_calderis_jungle.png"
+  },
+  "2p_calderisdunes": {
+   "name": "(2p) Siwal Frontier",
+   "maxplayers": 2,
+   "minimap": "maps/2p_calderisdunes.png",
+   "minimap_plain": "maps_plain/2p_calderisdunes.png"
+  },
+  "2p_calderisrefinery": {
+   "name": "(2p) Calderis Refinery",
+   "maxplayers": 2,
+   "minimap": "maps/2p_calderisrefinery.png",
+   "minimap_plain": "maps_plain/2p_calderisrefinery.png"
+  },
+  "2p_doom_of_tularis": {
+   "name": "(2p) Doom of Tularis",
+   "maxplayers": 2,
+   "minimap": "maps/2p_doom_of_tularis.png",
+   "minimap_plain": "maps_plain/2p_doom_of_tularis.png"
+  },
+  "2p_fedrid_folly": {
+   "name": "(2p) Fedrid Folly",
+   "maxplayers": 2,
+   "minimap": "maps/2p_fedrid_folly.png",
+   "minimap_plain": "maps_plain/2p_fedrid_folly.png"
+  },
+  "2p_fen_dunloch": {
+   "name": "(2p) Fen Dunloch",
+   "maxplayers": 2,
+   "minimap": "maps/2p_fen_dunloch.png",
+   "minimap_plain": "maps_plain/2p_fen_dunloch.png"
+  },
+  "2p_fortuna_sanctum": {
+   "name": "(2p) Fortuna Sanctum",
+   "maxplayers": 2,
+   "minimap": "maps/2p_fortuna_sanctum.png",
+   "minimap_plain": "maps_plain/2p_fortuna_sanctum.png"
+  },
+  "2p_hive_city": {
+   "name": "(2p) Hive City",
+   "maxplayers": 2,
+   "minimap": "maps/2p_hive_city.png",
+   "minimap_plain": "maps_plain/2p_hive_city.png"
+  },
+  "2p_icestationobelis": {
+   "name": "(2p) Ice Station Obelis",
+   "maxplayers": 2,
+   "minimap": "maps/2p_icestationobelis.png",
+   "minimap_plain": "maps_plain/2p_icestationobelis.png"
+  },
+  "2p_imperial_plaza": {
+   "name": "(2p) Imperial Plaza",
+   "maxplayers": 2,
+   "minimap": "maps/2p_imperial_plaza.png",
+   "minimap_plain": "maps_plain/2p_imperial_plaza.png"
+  },
+  "2p_judgmentofcarrion": {
+   "name": "(2p) Judgment of Carrion",
+   "maxplayers": 2,
+   "minimap": "maps/2p_judgmentofcarrion.png",
+   "minimap_plain": "maps_plain/2p_judgmentofcarrion.png"
+  },
+  "2p_legishighstratum": {
+   "name": "(2p) Legis High Stratum",
+   "maxplayers": 2,
+   "minimap": "maps/2p_legishighstratum.png",
+   "minimap_plain": "maps_plain/2p_legishighstratum.png"
+  },
+  "2p_leviathanhive": {
+   "name": "(2p) Leviathan Hive",
+   "maxplayers": 2,
+   "minimap": "maps/2p_leviathanhive.png",
+   "minimap_plain": "maps_plain/2p_leviathanhive.png"
+  },
+  "2p_lugganath_glacier": {
+   "name": "(2p) Lugganath Glacier",
+   "maxplayers": 2,
+   "minimap": "maps/2p_lugganath_glacier.png",
+   "minimap_plain": "maps_plain/2p_lugganath_glacier.png"
+  },
+  "2p_mining_site_gamma": {
+   "name": "(2p) Mining Site Gamma",
+   "maxplayers": 2,
+   "minimap": "maps/2p_mining_site_gamma.png",
+   "minimap_plain": "maps_plain/2p_mining_site_gamma.png"
+  },
+  "2p_ocean_base": {
+   "name": "(2p) Ocean Base Manann",
+   "maxplayers": 2,
+   "minimap": "maps/2p_ocean_base.png",
+   "minimap_plain": "maps_plain/2p_ocean_base.png"
+  },
+  "2p_outerreaches": {
+   "name": "(2p) Outer Reaches",
+   "maxplayers": 2,
+   "minimap": "maps/2p_outerreaches.png",
+   "minimap_plain": "maps_plain/2p_outerreaches.png"
+  },
+  "2p_paletoothgorge": {
+   "name": "(2p) Pale Tooth Gorge",
+   "maxplayers": 2,
+   "minimap": "maps/2p_paletoothgorge.png",
+   "minimap_plain": "maps_plain/2p_paletoothgorge.png"
+  },
+  "2p_questsdisaster": {
+   "name": "(2p) Quest's Heresy",
+   "maxplayers": 2,
+   "minimap": "maps/2p_questsdisaster.png",
+   "minimap_plain": "maps_plain/2p_questsdisaster.png"
+  },
+  "2p_sector95": {
+   "name": "(2p) Sector 95",
+   "maxplayers": 2,
+   "minimap": "maps/2p_sector95.png",
+   "minimap_plain": "maps_plain/2p_sector95.png"
+  },
+  "2p_selenon_island": {
+   "name": "(2p) Selenon Island",
+   "maxplayers": 2,
+   "minimap": "maps/2p_selenon_island.png",
+   "minimap_plain": "maps_plain/2p_selenon_island.png"
+  },
+  "2p_seraph_palace": {
+   "name": "(2p) Seraph Palace",
+   "maxplayers": 2,
+   "minimap": "maps/2p_seraph_palace.png",
+   "minimap_plain": "maps_plain/2p_seraph_palace.png"
+  },
+  "2p_solstice_plateau": {
+   "name": "(2p) Solstice Plateau",
+   "maxplayers": 2,
+   "minimap": "maps/2p_solstice_plateau.png",
+   "minimap_plain": "maps_plain/2p_solstice_plateau.png"
+  },
+  "2p_tiamets_paradise": {
+   "name": "(2p) Tiamet's Paradise",
+   "maxplayers": 2,
+   "minimap": "maps/2p_tiamets_paradise.png",
+   "minimap_plain": "maps_plain/2p_tiamets_paradise.png"
+  },
+  "2p_typhonswamp": {
+   "name": "(2p) Green Tooth Jungle",
+   "maxplayers": 2,
+   "minimap": "maps/2p_typhonswamp.png",
+   "minimap_plain": "maps_plain/2p_typhonswamp.png"
+  },
+  "2p_typhonswampredux": {
+   "name": "(2p) Green Tooth Jungle Redux",
+   "maxplayers": 2,
+   "minimap": "maps/2p_typhonswampredux.png",
+   "minimap_plain": "maps_plain/2p_typhonswampredux.png"
+  },
+  "2p_typhonswampreduxfixedversion": {
+   "name": "(2p) Green Tooth Jungle Redux - Fixed Version",
+   "maxplayers": 2,
+   "minimap": "maps/2p_typhonswampreduxfixedversion.png",
+   "minimap_plain": "maps_plain/2p_typhonswampreduxfixedversion.png"
+  },
+  "2p_vulcan_pits": {
+   "name": "(2p) Vulcan Pits",
+   "maxplayers": 2,
+   "minimap": "maps/2p_vulcan_pits.png",
+   "minimap_plain": "maps_plain/2p_vulcan_pits.png"
+  },
+  "4p_ancestors_rest": {
+   "name": "(4p) Ancestors' Rest",
+   "maxplayers": 4,
+   "minimap": "maps/4p_ancestors_rest.png",
+   "minimap_plain": "maps_plain/4p_ancestors_rest.png"
+  },
+  "4p_argusgate": {
+   "name": "(4p) Argus Desert Gate",
+   "maxplayers": 4,
+   "minimap": "maps/4p_argusgate.png",
+   "minimap_plain": "maps_plain/4p_argusgate.png"
+  },
+  "4p_ashesoftyphon": {
+   "name": "(4p) Ashes of Typhon",
+   "maxplayers": 4,
+   "minimap": "maps/4p_ashesoftyphon.png",
+   "minimap_plain": "maps_plain/4p_ashesoftyphon.png"
+  },
+  "4p_aurelianstalemate": {
+   "name": "4p_aurelianstalemate",
+   "maxplayers": null,
+   "minimap": null,
+   "minimap_plain": null
+  },
+  "4p_aurelianstalemateb": {
+   "name": "4p_aurelianstalemateb",
+   "maxplayers": null,
+   "minimap": null,
+   "minimap_plain": null
+  },
+  "4p_biffysperilredux": {
+   "name": "(4p) Biffy's Peril Redux",
+   "maxplayers": 4,
+   "minimap": "maps/4p_biffysperilredux.png",
+   "minimap_plain": "maps_plain/4p_biffysperilredux.png"
+  },
+  "4p_calderisrefinery": {
+   "name": "(4p) Calderis Refinery",
+   "maxplayers": 4,
+   "minimap": "maps/4p_calderisrefinery.png",
+   "minimap_plain": "maps_plain/4p_calderisrefinery.png"
+  },
+  "4p_desertshowdown": {
+   "name": "(4p) Desert Showdown",
+   "maxplayers": 4,
+   "minimap": "maps/4p_desertshowdown.png",
+   "minimap_plain": "maps_plain/4p_desertshowdown.png"
+  },
+  "4p_edgeofannihilation": {
+   "name": "(4p) Medean Cliff Mines",
+   "maxplayers": 4,
+   "minimap": "maps/4p_edgeofannihilation.png",
+   "minimap_plain": "maps_plain/4p_edgeofannihilation.png"
+  },
+  "4p_fen_dunloch": {
+   "name": "(4p) Fen Dunloch",
+   "maxplayers": 4,
+   "minimap": "maps/4p_fen_dunloch.png",
+   "minimap_plain": "maps_plain/4p_fen_dunloch.png"
+  },
+  "4p_golgothadepths": {
+   "name": "(4p) Golgotha Depths",
+   "maxplayers": 4,
+   "minimap": "maps/4p_golgothadepths.png",
+   "minimap_plain": "maps_plain/4p_golgothadepths.png"
+  },
+  "4p_hydrischasm": {
+   "name": "(4p) Hydris Chasm",
+   "maxplayers": 4,
+   "minimap": "maps/4p_hydrischasm.png",
+   "minimap_plain": "maps_plain/4p_hydrischasm.png"
+  },
+  "4p_judgmentofcarrion": {
+   "name": "(4p) Judgment of Carrion",
+   "maxplayers": 4,
+   "minimap": "maps/4p_judgmentofcarrion.png",
+   "minimap_plain": "maps_plain/4p_judgmentofcarrion.png"
+  },
+  "4p_junglemines": {
+   "name": "(4p) Medean Jungle Mines",
+   "maxplayers": 4,
+   "minimap": "maps/4p_junglemines.png",
+   "minimap_plain": "maps_plain/4p_junglemines.png"
+  },
+  "4p_lyredon_thrall": {
+   "name": "(4p) Lyredon Thrall",
+   "maxplayers": 4,
+   "minimap": "maps/4p_lyredon_thrall.png",
+   "minimap_plain": "maps_plain/4p_lyredon_thrall.png"
+  },
+  "4p_selenonfissure": {
+   "name": "(4p) Selenon Fissure",
+   "maxplayers": 4,
+   "minimap": "maps/4p_selenonfissure.png",
+   "minimap_plain": "maps_plain/4p_selenonfissure.png"
+  },
+  "4p_settlement": {
+   "name": "(4p) Ruins of Argus",
+   "maxplayers": 4,
+   "minimap": "maps/4p_settlement.png",
+   "minimap_plain": "maps_plain/4p_settlement.png"
+  },
+  "4p_tharsisforge": {
+   "name": "(4p) Tharsis Forge",
+   "maxplayers": 4,
+   "minimap": "maps/4p_tharsisforge.png",
+   "minimap_plain": "maps_plain/4p_tharsisforge.png"
+  },
+  "4p_valderusrefinery": {
+   "name": "(4p) Valderus Refinery",
+   "maxplayers": 4,
+   "minimap": "maps/4p_valderusrefinery.png",
+   "minimap_plain": "maps_plain/4p_valderusrefinery.png"
+  },
+  "6p_angelgate": {
+   "name": "(6p) Angel Gate",
+   "maxplayers": 6,
+   "minimap": "maps/6p_angelgate.png",
+   "minimap_plain": "maps_plain/6p_angelgate.png"
+  },
+  "6p_angelgateredux": {
+   "name": "(6p) Angel Gate Redux",
+   "maxplayers": 6,
+   "minimap": "maps/6p_angelgateredux.png",
+   "minimap_plain": "maps_plain/6p_angelgateredux.png"
+  },
+  "6p_angstrom_heights": {
+   "name": "(6p) Angstrom Heights",
+   "maxplayers": 6,
+   "minimap": "maps/6p_angstrom_heights.png",
+   "minimap_plain": "maps_plain/6p_angstrom_heights.png"
+  },
+  "6p_arena": {
+   "name": "(6p) Typhon Arena",
+   "maxplayers": 6,
+   "minimap": "maps/6p_arena.png",
+   "minimap_plain": "maps_plain/6p_arena.png"
+  },
+  "6p_argentshelf": {
+   "name": "(6p) Argent Shelf",
+   "maxplayers": 6,
+   "minimap": "maps/6p_argentshelf.png",
+   "minimap_plain": "maps_plain/6p_argentshelf.png"
+  },
+  "6p_argentshelfredux": {
+   "name": "(6p) Argent Shelf Redux V2",
+   "maxplayers": 6,
+   "minimap": "maps/6p_argentshelfredux.png",
+   "minimap_plain": "maps_plain/6p_argentshelfredux.png"
+  },
+  "6p_ashesarena": {
+   "name": "(6p) Arena of Ashes",
+   "maxplayers": 6,
+   "minimap": "maps/6p_ashesarena.png",
+   "minimap_plain": "maps_plain/6p_ashesarena.png"
+  },
+  "6p_ashesoftyphon": {
+   "name": "(6p) Ashes of Typhon",
+   "maxplayers": 6,
+   "minimap": "maps/6p_ashesoftyphon.png",
+   "minimap_plain": "maps_plain/6p_ashesoftyphon.png"
+  },
+  "6p_avensa": {
+   "name": "(6p) Avensa Stronghold",
+   "maxplayers": 6,
+   "minimap": "maps/6p_avensa.png",
+   "minimap_plain": "maps_plain/6p_avensa.png"
+  },
+  "6p_boranisrefinery": {
+   "name": "(6p) Boranis Refinery",
+   "maxplayers": 6,
+   "minimap": "maps/6p_boranisrefinery.png",
+   "minimap_plain": "maps_plain/6p_boranisrefinery.png"
+  },
+  "6p_calderis_outskirts": {
+   "name": "(6p) Argus Desert Gate",
+   "maxplayers": 6,
+   "minimap": "maps/6p_calderis_outskirts.png",
+   "minimap_plain": "maps_plain/6p_calderis_outskirts.png"
+  },
+  "6p_calderisrefinery": {
+   "name": "(6p) Calderis Refinery",
+   "maxplayers": 6,
+   "minimap": "maps/6p_calderisrefinery.png",
+   "minimap_plain": "maps_plain/6p_calderisrefinery.png"
+  },
+  "6p_capitalspireredux": {
+   "name": "(6p) Capital Spire Redux",
+   "maxplayers": 6,
+   "minimap": "maps/6p_capitalspireredux.png",
+   "minimap_plain": "maps_plain/6p_capitalspireredux.png"
+  },
+  "6p_cityjungle": {
+   "name": "(6p) Tiber Outpost",
+   "maxplayers": 6,
+   "minimap": "maps/6p_cityjungle.png",
+   "minimap_plain": "maps_plain/6p_cityjungle.png"
+  },
+  "6p_deathworldtemple": {
+   "name": "(6p) Deathworld Temple",
+   "maxplayers": 6,
+   "minimap": "maps/6p_deathworldtemple.png",
+   "minimap_plain": "maps_plain/6p_deathworldtemple.png"
+  },
+  "6p_estia": {
+   "name": "(6p) Estia Province",
+   "maxplayers": 6,
+   "minimap": "maps/6p_estia.png",
+   "minimap_plain": "maps_plain/6p_estia.png"
+  },
+  "6p_fen_dunloch": {
+   "name": "(6p) Fen Dunloch",
+   "maxplayers": 6,
+   "minimap": "maps/6p_fen_dunloch.png",
+   "minimap_plain": "maps_plain/6p_fen_dunloch.png"
+  },
+  "6p_fen_dunloch_redux": {
+   "name": "(6p) Fen Dunloch Winter",
+   "maxplayers": 6,
+   "minimap": "maps/6p_fen_dunloch_redux.png",
+   "minimap_plain": "maps_plain/6p_fen_dunloch_redux.png"
+  },
+  "6p_fortuna_sanctum": {
+   "name": "(6p) Fortuna Sanctum",
+   "maxplayers": 6,
+   "minimap": "maps/6p_fortuna_sanctum.png",
+   "minimap_plain": "maps_plain/6p_fortuna_sanctum.png"
+  },
+  "6p_garvusicegate": {
+   "name": "(6p) Garvus Ice Gate",
+   "maxplayers": 6,
+   "minimap": "maps/6p_garvusicegate.png",
+   "minimap_plain": "maps_plain/6p_garvusicegate.png"
+  },
+  "6p_graesark": {
+   "name": "(6p) Graesark Undercity",
+   "maxplayers": 6,
+   "minimap": "maps/6p_graesark.png",
+   "minimap_plain": "maps_plain/6p_graesark.png"
+  },
+  "6p_hades_wastes_redux": {
+   "name": "(6p) Hades Wastes",
+   "maxplayers": 6,
+   "minimap": "maps/6p_hades_wastes_redux.png",
+   "minimap_plain": "maps_plain/6p_hades_wastes_redux.png"
+  },
+  "6p_judgmentofcarrion": {
+   "name": "(6p) Judgment of Carrion",
+   "maxplayers": 6,
+   "minimap": "maps/6p_judgmentofcarrion.png",
+   "minimap_plain": "maps_plain/6p_judgmentofcarrion.png"
+  },
+  "6p_junglegate": {
+   "name": "(6p) Leyrus Jungle Gate",
+   "maxplayers": 6,
+   "minimap": "maps/6p_junglegate.png",
+   "minimap_plain": "maps_plain/6p_junglegate.png"
+  },
+  "6p_kasyr_lutien_redux": {
+   "name": "(6p) Kasyr Lutien Redux",
+   "maxplayers": 6,
+   "minimap": "maps/6p_kasyr_lutien_redux.png",
+   "minimap_plain": "maps_plain/6p_kasyr_lutien_redux.png"
+  },
+  "6p_kathari": {
+   "name": "(6p) Kathari Ruins",
+   "maxplayers": 6,
+   "minimap": "maps/6p_kathari.png",
+   "minimap_plain": "maps_plain/6p_kathari.png"
+  },
+  "6p_khatrin_purification_plant": {
+   "name": "(6p) Khatrin Purification Plant",
+   "maxplayers": 6,
+   "minimap": "maps/6p_khatrin_purification_plant.png",
+   "minimap_plain": "maps_plain/6p_khatrin_purification_plant.png"
+  },
+  "6p_lorthas_cataclysm": {
+   "name": "(6p) Lorthas Cataclysm",
+   "maxplayers": 6,
+   "minimap": "maps/6p_lorthas_cataclysm.png",
+   "minimap_plain": "maps_plain/6p_lorthas_cataclysm.png"
+  },
+  "6p_meridiancity": {
+   "name": "(6p) Meridian High City",
+   "maxplayers": 6,
+   "minimap": "maps/6p_meridiancity.png",
+   "minimap_plain": "maps_plain/6p_meridiancity.png"
+  },
+  "6p_meridianhighcity": {
+   "name": "(6p) Capital Spire",
+   "maxplayers": 6,
+   "minimap": "maps/6p_meridianhighcity.png",
+   "minimap_plain": "maps_plain/6p_meridianhighcity.png"
+  },
+  "6p_myggyrid'isil": {
+   "name": "(6p) Myggyrid'isil",
+   "maxplayers": 6,
+   "minimap": "maps/6p_myggyridisil.png",
+   "minimap_plain": "maps_plain/6p_myggyridisil.png"
+  },
+  "6p_nocturne": {
+   "name": "(6p) Nocturne Inferno",
+   "maxplayers": 6,
+   "minimap": "maps/6p_nocturne.png",
+   "minimap_plain": "maps_plain/6p_nocturne.png"
+  },
+  "6p_quests_redemption": {
+   "name": "(6p) Quest's Redemption",
+   "maxplayers": 6,
+   "minimap": "maps/6p_quests_redemption.png",
+   "minimap_plain": "maps_plain/6p_quests_redemption.png"
+  },
+  "6p_sentinel_beach": {
+   "name": "(6p) Sentinel Beach",
+   "maxplayers": 6,
+   "minimap": "maps/6p_sentinel_beach.png",
+   "minimap_plain": "maps_plain/6p_sentinel_beach.png"
+  },
+  "6p_siege_of_vraks": {
+   "name": "(6p) Siege of Vraks",
+   "maxplayers": 6,
+   "minimap": "maps/6p_siege_of_vraks.png",
+   "minimap_plain": "maps_plain/6p_siege_of_vraks.png"
+  },
+  "6p_typhon_mire": {
+   "name": "(6p) Typhon Mire",
+   "maxplayers": 6,
+   "minimap": "maps/6p_typhon_mire.png",
+   "minimap_plain": "maps_plain/6p_typhon_mire.png"
+  },
+  "6p_typhon_plateau": {
+   "name": "(6p) Siccaris Plateau",
+   "maxplayers": 6,
+   "minimap": "maps/6p_typhon_plateau.png",
+   "minimap_plain": "maps_plain/6p_typhon_plateau.png"
+  },
+  "6p_ulthanetemple": {
+   "name": "(6p) Ulthane Temple",
+   "maxplayers": 6,
+   "minimap": "maps/6p_ulthanetemple.png",
+   "minimap_plain": "maps_plain/6p_ulthanetemple.png"
+  },
+  "6p_valderusrefinery": {
+   "name": "(6p) Valderus Refinery",
+   "maxplayers": 6,
+   "minimap": "maps/6p_valderusrefinery.png",
+   "minimap_plain": "maps_plain/6p_valderusrefinery.png"
+  },
+  "6p_valhallaoilfield": {
+   "name": "(6p) Valhalla Oilfield",
+   "maxplayers": 6,
+   "minimap": "maps/6p_valhallaoilfield.png",
+   "minimap_plain": "maps_plain/6p_valhallaoilfield.png"
+  },
+  "6p_valinograd": {
+   "name": "(6p) Valinograd Harbor 1",
+   "maxplayers": 6,
+   "minimap": "maps/6p_valinograd.png",
+   "minimap_plain": "maps_plain/6p_valinograd.png"
+  },
+  "6p_whitewallsofcalderis": {
+   "name": "(6p) White Walls of Calderis",
+   "maxplayers": 6,
+   "minimap": "maps/6p_whitewallsofcalderis.png",
+   "minimap_plain": "maps_plain/6p_whitewallsofcalderis.png"
+  },
+  "6p_wrathofbaal": {
+   "name": "(6p) Wrath of Baal",
+   "maxplayers": 6,
+   "minimap": "maps/6p_wrathofbaal.png",
+   "minimap_plain": "maps_plain/6p_wrathofbaal.png"
+  },
+  "jarilosforge": {
+   "name": "(2p) Jarilo's Forge",
+   "maxplayers": 2,
+   "minimap": "maps/jarilosforge.png",
+   "minimap_plain": "maps_plain/jarilosforge.png"
+  }
+ },
+ "relic_race_id": {
+  "0": "chaos_marines",
+  "1": "eldar",
+  "2": "imperial_guard",
+  "3": "ordo_malleus",
+  "4": "orks",
+  "5": "space_marines",
+  "6": "t_tau",
+  "7": "tyranids"
+ },
+ "_notes": {
+  "race_key": "replay race string == racebps file name (simulation/attrib/racebps/<key>.rbf)",
+  "hero_index": "replay hero index == position in racebps hero_list (Elite_Attrib.sga)",
+  "minimap": "lobby/front-end preview (<map>_fe.dds) with start positions and points; minimap_plain = in-game minimap (_mm/_map.dds)",
+  "relic_race_id": "equals racebps race_id (verified earlier against Relic match history: 0 CSM,1 Eldar,2 IG,3 OM,4 Orks,5 SM,6 Tau,7 Tyranids)"
+ }
+}

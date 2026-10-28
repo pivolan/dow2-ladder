@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoW2 Replay Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+:root { --bg:#0f1012; --panel:#17191c; --line:#2a2d32; --text:#e6e3dc; --muted:#9a968c; --gold:#e6c35c; --red:#b0413e; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg:#f4f1ea; --panel:#ffffff; --line:#ddd6c8; --text:#1f1d1a; --muted:#6b665c; --gold:#9a7a1c; --red:#a33a37; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: .5px; }
+h1 b { color: var(--gold); }
+.sub { color: var(--muted); margin-bottom: 22px; }
+.drop { display: block; border: 2px dashed var(--line); border-radius: 14px; padding: 34px 16px; text-align: center; background: var(--panel); cursor: pointer; transition: .15s; }
+.drop.hover { border-color: var(--gold); }
+.drop strong { color: var(--gold); }
+.drop input { display: none; }
+.status { margin: 14px 0; color: var(--muted); min-height: 1.5em; }
+.status.err { color: var(--red); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 18px 0; overflow-x: auto; }
+.cap { font-weight: 600; color: var(--gold); }
+.report table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.report th, .report td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; white-space: nowrap; }
+.report h1 { font-size: 20px; word-break: break-all; }
+.report h2 { font-size: 18px; color: var(--gold); margin-top: 26px; }
+.report code { background: rgba(127,127,127,.15); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+.report li { margin: 3px 0; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
+button, .btn { background: transparent; color: var(--text); border: 1px solid var(--gold); border-radius: 10px; padding: 9px 14px; font: inherit; cursor: pointer; text-decoration: none; }
+button:hover, .btn:hover { background: rgba(230,195,92,.12); }
+button[disabled] { opacity: .5; cursor: default; }
+.recent a { color: var(--text); text-decoration: none; display: block; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.recent a:hover .rn { color: var(--gold); }
+.rn { font-weight: 600; word-break: break-all; }
+.rc { color: var(--muted); font-size: 14px; }
+.back { color: var(--muted); text-decoration: none; }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.lang { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex-shrink: 0; }
+.lang button { border: 0; border-radius: 0; padding: 6px 12px; color: var(--muted); }
+.lang button.on { background: var(--gold); color: #111; }
+/* replay browser */
+.fil { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+.fil input, .fil select { font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; max-width: 100%; }
+.fil input { flex: 1 1 200px; min-width: 0; }
+.rr { display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.rr:hover .rh b { color: var(--gold); }
+.mini { width: 72px; height: 72px; border-radius: 6px; background: #0e0c09 center/cover no-repeat; border: 1px solid var(--line); }
+.rh { color: var(--muted); font-size: 13px; margin-bottom: 3px; }
+.rh b { color: var(--text); font-weight: 600; }
+.tm { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: start; }
+.tm .vs { color: var(--muted); font-size: 12px; padding-top: 4px; }
+.pp { display: flex; align-items: center; gap: 5px; font-size: 14px; min-width: 0; padding: 1px 0; }
+.pp img { width: 24px; height: 24px; border-radius: 4px; flex: none; }
+.pp img.rc { width: 18px; height: 18px; }
+.pp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.more { display: block; margin: 12px auto 0; }
+.more[hidden] { display: none; }
+.head { display: grid; grid-template-columns: 128px 1fr; gap: 16px; align-items: center; margin-top: 12px; }
+.head .mini { width: 128px; height: 128px; }
+@media (max-width: 560px) { .tm { grid-template-columns: 1fr; } .tm .vs { display: none; } .rr { grid-template-columns: 56px 1fr; } .mini { width: 56px; height: 56px; }
+  .head { grid-template-columns: 88px 1fr; } .head .mini { width: 88px; height: 88px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1 data-i="title"></h1><div class="sub" data-i="sub"></div></div>
+    <div class="lang"><button id="len">EN</button><button id="lru">RU</button></div>
+  </div>
+
+  <div id="home">
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".rec">
+      <div data-i="drop"></div>
+      <div class="sub" style="margin:6px 0 0" data-i="where"></div>
+    </label>
+    <div class="status" id="status"></div>
+    <div class="card"><div class="cap" data-i="browse"></div>
+      <div class="fil">
+        <input id="f-q" type="search">
+        <select id="f-mode"><option value=""></option><option>1v1</option><option>2v2</option><option>3v3</option></select>
+        <select id="f-race"></select>
+        <select id="f-map"></select>
+      </div>
+      <div id="list">…</div>
+      <button class="more" id="more" hidden data-i="more"></button>
+    </div>
+  </div>
+
+  <div id="result" hidden>
+    <a class="back" href="/replay/" data-i="back"></a>
+    <div class="card"><div class="cap" id="caption"></div>
+      <div class="head" id="head" hidden></div>
+      <div class="btns">
+        <a class="btn" id="dlrec" href="#" data-i="dlrec"></a>
+        <button id="sbtn" data-i="story"></button>
+        <a class="btn" id="dl" href="#" data-i="dl"></a>
+      </div>
+      <div class="status" id="sstatus"></div>
+    </div>
+    <div class="card report" id="story" hidden></div>
+    <div class="card report" id="report"></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const T = {
+ en: { title: 'Replay analyzer: <b>Dawn of War II</b>', sub: 'Retribution and Elite Mod: upload a <code>.rec</code> file to get players, build orders, fights, losses and the likely winner.',
+   drop: '<strong>Drop a replay here</strong> or click to choose a file', where: 'Replays are in Documents\\My Games\\Dawn of War II - Retribution\\Playback',
+   recent: 'Recent analyses', back: '← analyse another replay', story: 'Write the match story', dl: 'Download report (.md)',
+   needrec: 'A .rec replay file is required', uploading: n => 'Uploading and analysing “' + n + '”…', err: 'Error: ', empty: 'Nothing here yet — be the first.',
+   failed: 'Could not parse this replay', writing: 'The story is being written, this takes 1–3 minutes…', loadfail: 'failed to load',
+   browse: 'Replays', q: 'Player, map or lobby', allModes: 'All modes', allRaces: 'All races', allMaps: 'All maps', more: 'Show more',
+   none: 'No replays for these filters.', dlrec: 'Download replay (.rec)', ladder: 'ladder match', copies: n => n + ' uploads',
+   race: { chaos_marines: 'Chaos', eldar: 'Eldar', imperial_guard: 'Imperial Guard', ordo_malleus: 'Ordo Malleus', orks: 'Orks', space_marines: 'Space Marines', t_tau: 'Tau', tyranids: 'Tyranids', z_unecron: 'Necrons' } },
+ ru: { title: 'Разбор реплеев <b>Dawn of War II</b>', sub: 'Retribution и Elite Mod: загрузите файл <code>.rec</code>, получите игроков, билды, бои, потери и вероятного победителя.',
+   drop: '<strong>Перетащите реплей сюда</strong> или нажмите, чтобы выбрать файл', where: 'Реплеи лежат в Документы\\My Games\\Dawn of War II - Retribution\\Playback',
+   recent: 'Последние разборы', back: '← загрузить другой реплей', story: 'Написать историю матча', dl: 'Скачать отчёт (.md)',
+   needrec: 'Нужен файл реплея .rec', uploading: n => 'Загружаю и разбираю «' + n + '»…', err: 'Ошибка: ', empty: 'Пока пусто — будьте первым.',
+   failed: 'Не удалось разобрать реплей', writing: 'История пишется, это 1–3 минуты…', loadfail: 'не загрузилось',
+   browse: 'Реплеи', q: 'Ник, карта или лобби', allModes: 'Все режимы', allRaces: 'Все расы', allMaps: 'Все карты', more: 'Показать ещё',
+   none: 'Реплеев с такими условиями нет.', dlrec: 'Скачать реплей (.rec)', ladder: 'матч ладдера', copies: n => 'присылали ' + n + ' раз',
+   race: { chaos_marines: 'Хаос', eldar: 'Эльдар', imperial_guard: 'Имп. гвардия', ordo_malleus: 'Ордо Маллеус', orks: 'Орки', space_marines: 'Космодесант', t_tau: 'Тау', tyranids: 'Тираниды', z_unecron: 'Некроны' } } };
+let L = (new URLSearchParams(location.search).get('lang')) || (() => { try { return localStorage.getItem('lang'); } catch (e) { return null; } })() || 'en';
+if (!T[L]) L = 'en';
+function applyLang() {
+  document.documentElement.lang = L;
+  document.querySelectorAll('[data-i]').forEach(e => e.innerHTML = T[L][e.dataset.i]);
+  $('f-q').placeholder = T[L].q; $('f-mode').options[0].textContent = T[L].allModes;
+  $('len').classList.toggle('on', L === 'en'); $('lru').classList.toggle('on', L === 'ru');
+}
+function setLang(l) { L = l; try { localStorage.setItem('lang', l); } catch (e) {} applyLang(); if (rid) loadResult(); else { fillSel(MAPS); loadList(); } }
+const esc = s => (s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+// ники в реплее задаёт кто угодно: сырой HTML экранируем, итог чистим DOMPurify; без библиотек — просто текст
+const md = s => (window.marked && window.DOMPurify) ? DOMPurify.sanitize(marked.parse(esc(s))) : '<pre>' + esc(s) + '</pre>';
+
+async function upload(f) {
+  if (!f) return;
+  if (!/\.rec$/i.test(f.name)) { status(T[L].needrec, true); return; }
+  status(T[L].uploading(f.name));
+  try {
+    const r = await fetch('/replay/api/upload', { method: 'POST', headers: { 'X-Filename': encodeURIComponent(f.name) }, body: f });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    location.href = '/replay/r/' + j.id;
+  } catch (e) { status(T[L].err + e.message, true); }
+}
+function status(t, err) { const s = $('status'); s.textContent = t; s.className = 'status' + (err ? ' err' : ''); }
+
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('hover'); }));
+['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('hover'); }));
+drop.addEventListener('drop', ev => upload(ev.dataTransfer.files[0]));
+$('file').addEventListener('change', ev => upload(ev.target.files[0]));
+
+// ---------- реплеи: один матч — один реплей; иконки и миникарты из игры (/elite/assets) ----------
+const A = '/elite/assets/'; let AS = { races: {}, maps: {} }, MAPS = [], page = 0, items = [], qt = 0;
+const assetsReady = fetch(A + 'index.json').then(r => r.json()).then(j => { AS = j; }).catch(() => {});
+const RA = { chaos_space_marines: 'chaos_marines', tau: 't_tau', necron: 'z_unecron' };
+const rk = k => RA[k] || k;
+const rname = k => T[L].race[rk(k)] || k || '';
+const mtitle = k => (AS.maps[k] && AS.maps[k].name) || (k || '').replace(/^\d+p_/, '').replace(/_/g, ' ');
+const mini = k => AS.maps[k] && AS.maps[k].minimap ? `style="background-image:url('${A + AS.maps[k].minimap}')"` : '';
+function icons(p) {
+  const r = AS.races[rk(p.race)]; if (!r) return '';
+  const h = p.hero != null && r.heroes && r.heroes[p.hero];
+  return `<img class="rc" src="${A + r.icon}" alt="" title="${esc(rname(p.race))}">` + (h ? `<img src="${A + h.icon}" alt="" title="${esc(h.name)}">` : '');
+}
+function teams(pl) {
+  const ts = [...new Set(pl.map(p => p.team))].sort();
+  const side = t => '<div>' + pl.filter(p => p.team === t).map(p => `<div class="pp">${icons(p)}<span>${esc(p.name)}</span></div>`).join('') + '</div>';
+  return ts.length === 2 ? `<div class="tm">${side(ts[0])}<span class="vs">vs</span>${side(ts[1])}</div>` : `<div>${ts.map(side).join('')}</div>`;
+}
+const mins = s => s ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : '';
+const when = t => new Date(t * 1000).toLocaleString(L === 'ru' ? 'ru-RU' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function row(x) {
+  const tags = [x.mode, mtitle(x.map), when(x.uploaded), mins(x.duration)].filter(Boolean).map(esc);
+  if (x.lobby) tags.push(T[L].ladder);
+  return `<a class="rr" href="/replay/r/${x.id}"><div class="mini" ${mini(x.map)}></div><div style="min-width:0">
+    <div class="rh"><b>${tags.shift()}</b> · <b>${tags.shift()}</b> · ${tags.join(' · ')}</div>${teams(x.players)}</div></a>`;
+}
+function fillSel(maps) {
+  const rs = $('f-race'), v = rs.value;
+  rs.innerHTML = `<option value="">${T[L].allRaces}</option>` + Object.entries(AS.races).filter(([, r]) => r.playable !== false).map(([k]) => `<option value="${k}">${esc(rname(k))}</option>`).join('');
+  rs.value = v;
+  const ms = $('f-map'), v2 = ms.value;
+  ms.innerHTML = `<option value="">${T[L].allMaps}</option>` + (maps || []).map(k => `<option value="${esc(k)}">${esc(mtitle(k))}</option>`).join('');
+  ms.value = v2;
+}
+async function loadList(more) {
+  await assetsReady;
+  if (!more) { page = 0; items = []; }
+  const q = new URLSearchParams({ q: $('f-q').value, mode: $('f-mode').value, race: $('f-race').value, map: $('f-map').value, page, n: 20 });
+  try {
+    const d = await (await fetch('/replay/api/list?' + q)).json();
+    if (!MAPS.length && !$('f-map').value) { MAPS = d.maps; fillSel(MAPS); }
+    items = items.concat(d.items);
+    $('list').innerHTML = items.length ? items.map(row).join('') : '<div class="rc">' + T[L].none + '</div>';
+    $('more').hidden = items.length >= d.total;
+  } catch (e) { $('list').textContent = T[L].loadfail; }
+}
+$('f-q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => loadList(), 300); });
+['f-mode', 'f-race', 'f-map'].forEach(i => $(i).addEventListener('change', () => loadList()));
+$('more').onclick = () => { page++; loadList(true); };
+
+let rid = null, poll = null;
+async function loadResult() {
+  const j = await (await fetch('/replay/api/r/' + rid)).json();
+  $('home').hidden = true; $('result').hidden = false;
+  if (j.error && !j.report) { $('caption').textContent = T[L].failed; $('report').innerHTML = '<pre>' + esc(j.error) + '</pre>'; return; }
+  document.title = (j.name || 'Replay') + (L === 'en' ? ' — analysis' : ' — разбор');
+  $('caption').textContent = (L === 'en' ? j.caption_en : j.caption) || j.name;
+  $('report').innerHTML = md(L === 'en' ? j.report_en : j.report);
+  $('dl').href = '/replay/api/r/' + rid + (L === 'en' ? '/report_en.md' : '/report.md');
+  $('dlrec').href = '/replay/api/r/' + rid + '/replay.rec';
+  await assetsReady;
+  if (j.meta && j.meta.players && j.meta.players.length) {
+    const mm = j.meta;
+    $('head').innerHTML = `<div class="mini" ${mini(mm.map)}></div><div style="min-width:0"><div class="rh"><b>${esc(mtitle(mm.map))}</b> · ${mins(mm.duration)}` +
+      `${mm.lobby ? ' · ' + T[L].ladder + ' ' + esc(mm.lobby) : ''}${mm.uploads > 1 ? ' · ' + T[L].copies(mm.uploads) : ''}</div>${teams(mm.players)}</div>`;
+    $('head').hidden = false;
+  }
+  const story = L === 'en' ? j.story_en : j.story_ru;
+  $('story').hidden = !story; if (story) $('story').innerHTML = md(story);
+  $('sbtn').hidden = !!story; $('sbtn').disabled = j.story_running.includes(L);
+  if (j.story_running.length) { $('sstatus').textContent = T[L].writing; if (!poll) poll = setInterval(loadResult, 6000); }
+  else { $('sstatus').textContent = ''; if (poll) { clearInterval(poll); poll = null; } }
+}
+async function story(lang) {
+  const r = await fetch('/replay/api/r/' + rid + '/story/' + lang, { method: 'POST' });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); $('sstatus').textContent = j.error || 'ошибка'; return; }
+  loadResult();
+}
+$('sbtn').onclick = () => story(L);
+$('len').onclick = () => setLang('en'); $('lru').onclick = () => setLang('ru');
+applyLang();
+
+const m = location.pathname.match(/\/replay\/r\/([0-9a-f]{16})/);
+if (m) { rid = m[1]; loadResult(); } else loadList();
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+[Unit]
+Description=DoW2 player statistics from Relic API (https://rts.fintebtc.de/stats/), isolated user relicstats
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=relicstats
+Group=relicstats
+WorkingDirectory=/srv/relicstats
+ExecStart=/usr/bin/python3 /srv/relicstats/app/app.py
+Restart=always
+RestartSec=3
+UMask=0027
+ProtectSystem=strict
+ReadWritePaths=/srv/relicstats/data
+ProtectHome=yes
+InaccessiblePaths=/var/www /mnt /etc/nginx /etc/supervisor /usr/local/bin /root /var/log /srv/replayweb
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=512M
+CPUQuota=100%
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+ReadWritePaths=/srv/relicstats/logs

@@ -1,0 +1,7 @@
+[Unit]
+Description=Оценка исхода ладдерных матчей по реплею (пока Relic не отдал результат)
+After=dow2-ladder.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/ladder/guess_from_replays.py

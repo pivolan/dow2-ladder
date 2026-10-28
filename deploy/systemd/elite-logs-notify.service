@@ -1,0 +1,5 @@
+[Unit]
+Description=Send new Elite launcher logs to Telegram
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/elite-logs-notify.sh

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Elite Автоматч — лаунчер (демо)</title>
+<style>
+  :root{
+    --bg:#0c0a07; --app:#15110b; --card:#1d1710; --card2:#241c11; --edge:#3a2c18;
+    --gold:#d9a441; --gold2:#f3cd72; --green:#7bbf5a; --red:#c0533b; --blue:#6ea8d8;
+    --txt:#ece0c8; --dim:#9c8f78;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center;
+    padding:26px 14px}
+  .app{width:720px;max-width:100%;background:linear-gradient(180deg,#1a140d,var(--app));
+    border:1px solid var(--edge);border-radius:16px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.04)}
+  /* titlebar */
+  .bar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:#120d07;
+    border-bottom:1px solid var(--edge)}
+  .bar .logo{font-weight:800;color:var(--gold2);letter-spacing:.5px}
+  .bar .logo small{color:var(--dim);font-weight:600;font-size:11px;margin-left:6px}
+  .bar .dots{margin-left:auto;display:flex;gap:6px}
+  .bar .dots i{width:11px;height:11px;border-radius:50%;background:#2a2114;display:block}
+  /* tabs */
+  .tabs{display:flex;gap:4px;padding:8px 12px 0;background:#120d07}
+  .tabs .t{padding:8px 16px;font-size:13px;color:var(--dim);border:1px solid transparent;
+    border-bottom:none;border-radius:8px 8px 0 0;cursor:default}
+  .tabs .t.on{color:var(--gold2);background:var(--app);border-color:var(--edge)}
+  /* stats header */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--edge);
+    margin:16px;border:1px solid var(--edge);border-radius:12px;overflow:hidden}
+  .stat{background:linear-gradient(180deg,var(--card2),var(--card));padding:15px 10px;text-align:center}
+  .stat .n{font-size:30px;font-weight:800;color:var(--gold2);line-height:1;font-variant-numeric:tabular-nums}
+  .stat .n.g{color:var(--green)} .stat .n.b{color:var(--blue)}
+  .stat .l{font-size:12px;color:var(--dim);margin-top:6px}
+  .stat .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .dot.on{background:var(--green);box-shadow:0 0 7px var(--green)}
+  /* main card */
+  .main{margin:0 16px 18px;background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--edge);border-radius:14px;padding:22px;min-height:230px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .modes{display:flex;gap:8px;margin-bottom:18px}
+  .modes b{padding:8px 18px;border:1px solid var(--edge);border-radius:9px;font-size:14px;cursor:pointer;
+    color:var(--dim);background:#140f08;font-weight:600}
+  .modes b.on{color:#fff;border-color:var(--gold);background:linear-gradient(180deg,#3a2b12,#241a0d)}
+  .bigbtn{font:inherit;font-size:17px;font-weight:700;letter-spacing:.3px;cursor:pointer;
+    padding:15px 40px;border-radius:12px;border:1px solid var(--gold);color:#fff;
+    background:linear-gradient(180deg,#6a4c18,#432f0e);box-shadow:0 6px 20px rgba(217,164,65,.22);transition:.12s}
+  .bigbtn:hover{filter:brightness(1.12)}
+  .bigbtn.cancel{border-color:#6a3a2e;background:linear-gradient(180deg,#5a2c22,#3a1c15);box-shadow:none}
+  .hint{color:var(--dim);font-size:12px;margin-top:14px}
+  /* searching */
+  .searching{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .spin{width:40px;height:40px;border:3px solid rgba(243,205,114,.2);border-top-color:var(--gold2);
+    border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .searching .big{font-size:18px;color:var(--gold2);font-weight:700}
+  .searching .meta{font-size:13px;color:var(--dim)}
+  .timer{font-variant-numeric:tabular-nums}
+  /* matched */
+  .matched{width:100%;max-width:480px}
+  .found{font-size:19px;color:var(--green);font-weight:800;margin-bottom:16px}
+  .vs{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:#120d08;border:1px solid var(--edge);border-radius:12px;padding:14px 18px;margin-bottom:16px}
+  .vs .p{text-align:center;flex:1}
+  .vs .p .nm{font-weight:700;font-size:15px}
+  .vs .p.me .nm{color:var(--gold2)} .vs .p.op .nm{color:#eab6a8}
+  .vs .p .rt{font-size:12px;color:var(--dim);margin-top:3px}
+  .vs .mid{color:var(--dim);font-weight:800;font-size:13px}
+  .lobby{background:#120d08;border:1px solid var(--edge);border-radius:12px;padding:14px 16px;text-align:left}
+  .lobby .lh{font-size:13px;color:var(--dim);margin-bottom:10px}
+  .lobby .lh b{color:var(--txt)}
+  .lobby .race{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .lobby select{flex:1;background:#140f08;color:var(--txt);border:1px solid var(--edge);border-radius:8px;padding:9px 11px;font:inherit}
+  .lobby .status{font-size:12px;color:var(--dim)}
+  .lobby .status.ok{color:var(--green)}
+  .lobby .lid code{color:var(--gold2);font-size:11px;word-break:break-all}
+  .startbtn{width:100%;font:inherit;font-weight:700;font-size:15px;cursor:pointer;padding:12px;border-radius:10px;
+    border:1px solid var(--gold);color:#fff;background:linear-gradient(180deg,#2f7a2a,#1f5a1c)}
+  .startbtn:disabled{opacity:.4;cursor:default;background:linear-gradient(180deg,#333,#222);border-color:#444}
+  .launching{text-align:center}
+  .launching .big{font-size:20px;color:var(--gold2);font-weight:800;margin-bottom:8px}
+  .foot{color:var(--dim);font-size:11px;text-align:center;padding:0 16px 16px;line-height:1.5}
+  .foot code{color:var(--gold)}
+  .demobadge{position:fixed;top:10px;right:12px;font-size:11px;color:var(--dim);
+    background:#1a140d;border:1px solid var(--edge);border-radius:7px;padding:4px 9px}
+</style>
+</head>
+<body>
+<div class="demobadge">демо · живой бэкенд матчмейкинга</div>
+<div class="app">
+  <div class="bar"><span class="logo">Dawn of War II · ELITE<small>Launcher</small></span>
+    <span class="dots"><i></i><i></i><i></i></span></div>
+  <div class="tabs"><div class="t">Новости</div><div class="t on">Автоматч</div><div class="t">Ладдер</div><div class="t">Настройки</div></div>
+
+  <div class="stats">
+    <div class="stat"><div class="n g"><span class="dot on"></span><span id="s-online">0</span></div><div class="l">онлайн</div></div>
+    <div class="stat"><div class="n" id="s-queue">0</div><div class="l">в очереди</div></div>
+    <div class="stat"><div class="n b" id="s-playing">0</div><div class="l">играют в матчах</div></div>
+  </div>
+
+  <div class="main" id="main"></div>
+
+  <div class="foot">
+    Матчер — наш, по рейтингу ладдера (Glicko-2). Данные вживую: <code>GET /ladder/api/mm/status</code>,
+    очередь — <code>POST /ladder/api/mm/{join,poll,host}</code>. Соперник в демо подставляется автоматически, чтобы показать сбор пары.
+  </div>
+</div>
+
+<script>
+const API='/ladder/api/mm';
+const ME ='76561190000000011';   // «я» (в лаунчере — настоящий steamid игрока)
+const BOT='76561190000000012';   // демо-соперник, встаёт следом
+let mode='1v1', meState={state:'idle'}, timer=null, t0=0, botTimer=null, botHosting=false, launched=false;
+
+const post=(ep,b)=>fetch(API+'/'+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({state:'idle'}));
+
+async function statusLoop(){
+  try{const s=await post('hello',{steam:ME});
+    document.getElementById('s-online').textContent=Math.max(s.online,launched||meState.state!=='idle'?s.online:s.online);
+    document.getElementById('s-online').textContent=s.online;
+    document.getElementById('s-queue').textContent=s.searching;
+    document.getElementById('s-playing').textContent=s.playing;
+  }catch(e){}
+}
+
+function fmt(t){const s=Math.floor(t/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+
+function render(){
+  const m=document.getElementById('main');
+  if(launched){
+    m.innerHTML='<div class="launching"><div class="big">▶ Игра запускается…</div>'+
+      '<div class="hint">DOW2.exe стартует и заходит в лобби соперника по&nbsp;steam&nbsp;lobby&nbsp;id</div>'+
+      '<div style="margin-top:16px"><button class="bigbtn cancel" onclick="reset()">В меню</button></div></div>';
+    return;
+  }
+  if(meState.state==='idle'){
+    m.innerHTML=
+      '<div class="modes">'+['1v1','2v2','3v3'].map(x=>'<b class="'+(x===mode?'on':'')+'" data-m="'+x+'">'+x.replace('v',' на ')+'</b>').join('')+'</div>'+
+      '<button class="bigbtn" id="go">Встать в очередь</button>'+
+      '<div class="hint">Нажми — сервер подберёт соперника по рейтингу и запустит игру</div>';
+    m.querySelectorAll('.modes b').forEach(b=>b.onclick=()=>{mode=b.dataset.m;render();});
+    document.getElementById('go').onclick=joinQueue;
+    return;
+  }
+  if(meState.state==='searching'){
+    m.innerHTML='<div class="searching"><div class="spin"></div>'+
+      '<div class="big">Поиск соперника…</div>'+
+      '<div class="meta">режим '+meState.mode+' · твой рейтинг '+meState.rating+' · в очереди: '+(meState.queue?meState.queue[meState.mode]:1)+
+      ' · <span class="timer" id="tm">0:00</span></div>'+
+      '<button class="bigbtn cancel" id="cancel">Отмена</button></div>';
+    document.getElementById('cancel').onclick=leaveQueue;
+    return;
+  }
+  if(meState.state==='matched'){
+    const op=(meState.enemies&&meState.enemies[0])||{name:'Соперник',rating:'—'};
+    const host=meState.role==='host';
+    let lob;
+    if(host) lob = meState.lobby
+      ? '<div class="status ok">✔ Лобби создано, соперник заходит…</div><div class="lid">id: <code>'+meState.lobby+'</code></div>'
+      : '<div class="status">Создаю приватную игру…</div>';
+    else lob = meState.lobby
+      ? '<div class="status ok">→ Захожу в лобби хоста…</div><div class="lid">id: <code>'+meState.lobby+'</code></div>'
+      : '<div class="status">Жду, пока хост создаст лобби…</div>';
+    const ready = !!meState.lobby;
+    m.innerHTML='<div class="matched">'+
+      '<div class="found">✓ Матч найден!</div>'+
+      '<div class="vs"><div class="p me"><div class="nm">Ты</div><div class="rt">рейтинг '+(meState.myrating||'1500')+'</div></div>'+
+        '<div class="mid">VS</div>'+
+        '<div class="p op"><div class="nm">'+op.name+'</div><div class="rt">рейтинг '+op.rating+'</div></div></div>'+
+      '<div class="lobby"><div class="lh">Роль: <b>'+(host?'хост':'гость')+'</b> · '+meState.mode+'</div>'+
+        '<div class="race"><span style="color:var(--dim);font-size:13px">Играю за:</span>'+
+        '<select id="race"><option>Space Marines</option><option>Eldar</option><option>Orks</option>'+
+        '<option>Chaos</option><option>Imperial Guard</option><option>Tyranids</option><option>Tau</option><option>Necrons</option>'+
+        '<option>Случайно</option></select></div>'+
+        lob+
+        '<button class="startbtn" id="start" '+(ready?'':'disabled')+'>'+(ready?'Готов — запустить игру':'Подготовка…')+'</button>'+
+      '</div></div>';
+    const sb=document.getElementById('start'); if(sb) sb.onclick=()=>{launched=true;render();};
+    return;
+  }
+}
+
+async function joinQueue(){
+  meState=await post('join',{steam:ME,mode}); meState.myrating=meState.rating; t0=Date.now();
+  render();
+  if(!timer) timer=setInterval(loop,1200);
+  // демо-соперник встаёт в очередь через ~1.4с
+  clearTimeout(botTimer);
+  botTimer=setTimeout(()=>{post('join',{steam:BOT,mode}); if(!botTimer._p) botTimer._p=setInterval(botLoop,1200);},1400);
+}
+async function leaveQueue(){
+  await post('leave',{steam:ME}); await post('leave',{steam:BOT});
+  reset();
+}
+function reset(){
+  clearInterval(timer);timer=null;clearInterval(botTimer&&botTimer._p);if(botTimer)botTimer._p=null;
+  meState={state:'idle'};launched=false;botHosting=false;render();
+}
+async function loop(){
+  const r=await post('poll',{steam:ME}); const mr=meState.myrating; meState=r; meState.myrating=mr||r.rating;
+  if(r.state==='idle'){clearInterval(timer);timer=null;}
+  render();
+  const tm=document.getElementById('tm'); if(tm) tm.textContent=fmt(Date.now()-t0);
+}
+async function botLoop(){
+  const r=await post('poll',{steam:BOT});
+  if(r.state==='matched' && r.role==='host' && !r.lobby && !botHosting){
+    botHosting=true; const id='109775'+Math.floor(2e11+Math.random()*8e11);
+    setTimeout(()=>post('host',{steam:BOT,lobby:id}),800);
+  }
+  if(r.state==='idle'){clearInterval(botTimer._p);botTimer._p=null;}
+}
+
+// если хост — это Я, сам «создаю лобби»
+setInterval(()=>{
+  if(meState.state==='matched'&&meState.role==='host'&&!meState.lobby&&!meState._hosting){
+    meState._hosting=true; const id='109775'+Math.floor(2e11+Math.random()*8e11);
+    setTimeout(()=>post('host',{steam:ME,lobby:id}),800);
+  }
+},500);
+
+render(); statusLoop(); setInterval(statusLoop,1500);
+if(new URLSearchParams(location.search).get('auto')==='1') setTimeout(joinQueue,500);
+</script>
+</body>
+</html>

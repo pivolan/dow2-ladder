@@ -1,0 +1,15 @@
+[Unit]
+Description=DoW2 replay match stories worker (Claude without tools) for replay-web
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/bin/python3 /usr/local/bin/replay_story_worker.py
+Restart=always
+RestartSec=5
+Environment=HOME=/root
+Environment=PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/root/.claude/oauth_env
+
+[Install]
+WantedBy=multi-user.target
