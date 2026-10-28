@@ -457,7 +457,8 @@ def _try_match(mode):  # под MM_LOCK: нестрогий подбор с пр
     n = TEAM_N[mode]; need = n * 2; blocked = _blocked() | {p['steam'] for p in MM.values() if p.get('ruiner')}
     while True:
         allw = sorted([p for p in MM.values() if p['state'] == 'searching' and p['mode'] == mode and p['steam'] not in blocked], key=lambda p: p['ts'])
-        # pools: our own game server (Relay.dll) and Relic's servers can't share a match; test groups stay among themselves
+        # pools: test groups stay among themselves; strict own-server players (Relay 7) only with each other. Relay 8
+        # (relay_compat) shares the pool with Relic players: the host is then a Relic player, our server passes the others on
         pools = {}
         for p in allw: pools.setdefault(p.get('pool', ''), []).append(p)
         waiting = next((w for w in sorted(pools.values(), key=lambda w: w[0]['ts']) if len(w) >= need), None)
@@ -486,7 +487,8 @@ def _try_match(mode):  # под MM_LOCK: нестрогий подбор с пр
         host_team = [grp[i]['steam'] for i in best_split]
         guest_team = [grp[i]['steam'] for i in range(len(grp)) if i not in best_split]
         MM_SEQ[0] += 1; mid = 'm%d' % MM_SEQ[0]
-        host_steam = min(grp, key=lambda p: p['ts'])['steam']  # хост — кто дольше ждёт
+        relic = [p for p in grp if not p.get('own')]            # смешанный состав: хост — игрок без нашего сервера (Relic),
+        host_steam = min(relic or grp, key=lambda p: p['ts'])['steam']  # Relay 8 у остальных уводит их к нему на Relic; иначе — кто дольше ждёт
         if host_steam not in host_team:  # хост всегда в host-команде первым: меняем команды местами, а не переносим его
             host_team, guest_team = guest_team, host_team
         host_team.remove(host_steam); host_team.insert(0, host_steam)
@@ -570,7 +572,8 @@ def mm_join(steam, mode, d=None):
         MM[steam] = {'jts': now, 'steam': steam, 'mode': mode, 'rating': rating, 'rd': rd, 'games': games, 'ruiner': _ruin_blocked(steam),
                      'pid': pid, 'name': name or _clean(d.get('name')), 'state': 'searching', 'match': None, 'role': None,
                      'rsrc': rsrc, 'race': _clean(d.get('race'), 32), 'hero': _clean(d.get('hero'), 32), 'maps': maps, 'max_diff': max_diff,
-                     'ts': now, 'seen': now, 'pool': '%s|%s' % (_clean(d.get('group'), 24) or '', 'own' if d.get('own_server') else '')}
+                     'ts': now, 'seen': now, 'pool': '%s|%s' % (_clean(d.get('group'), 24) or '', 'own' if d.get('own_server') and not d.get('relay_compat') else ''),
+                     'own': bool(d.get('own_server'))}
         if mode == WATCH: _assign_watchers()
         elif d.get('bots'):   # тест: матч сразу против компьютеров, хост заполнит пустые слоты ИИ
             MM_SEQ[0] += 1; mid = 'm%d' % MM_SEQ[0]; p = MM[steam]
