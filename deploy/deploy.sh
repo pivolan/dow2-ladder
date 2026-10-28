@@ -63,14 +63,15 @@ if has site/; then
   find /var/www/rts-site/elite -path '*/dl' -prune -o -print0 2>/dev/null | xargs -0 -r setfacl -m u:pivodev:rwX,u:openclaw:rwX,m::rwx 2>/dev/null
   done_parts="$done_parts сайт"
 fi
-# ---- our game server in Moscow (Timeweb): only with no game on it
+# ---- our game servers: Moscow (Timeweb) + iggy (Hetzner) + polsha (AWS Frankfurt), each only with no game on it
 if has gameserver/; then
-  live=$(ssh -o BatchMode=yes timeweb 'ss -tn state established "( sport = :47100 or sport = :47000 or sport = :47001 or sport = :47005 or sport = :47007 or sport = :47008 )" | tail -n +2 | wc -l' 2>/dev/null || echo 99)
-  if [ "${live:-99}" -gt 0 ]; then pending="$pending
-gameserver/"; else
-    scp -q gameserver/battle_relay.py timeweb:/srv/dow2battle/battle_relay.py && scp -q gameserver/relay_proxy.py timeweb:/srv/dow2relay/relay_proxy.py \
-      && ssh timeweb 'chmod 644 /srv/dow2battle/battle_relay.py /srv/dow2relay/relay_proxy.py; systemctl restart dow2-battle dow2-relay' && done_parts="$done_parts игровой-сервер"
-  fi
+  for h in timeweb root@iggy root@polsha; do
+    live=$(ssh -o BatchMode=yes $h "ss -tn state established \"( sport = :47100 or sport = :47000 )\" | tail -n +2 | wc -l" 2>/dev/null || echo 99)
+    if [ "${live:-99}" -gt 0 ]; then pending="$pending
+gameserver/"; continue; fi
+    scp -q gameserver/battle_relay.py $h:/srv/dow2battle/battle_relay.py && ssh $h "chmod 644 /srv/dow2battle/battle_relay.py; systemctl restart dow2-battle" && done_parts="$done_parts сервер-$h"
+  done
+  pending=$(echo "$pending" | sort -u)
 fi
 # deploy/ (systemd units, notifier) is installed by hand: it changes how the services run
 
