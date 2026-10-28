@@ -537,13 +537,15 @@ def _player_view(p):  # под MM_LOCK: что вернуть игроку в po
         return out
     roster = [{'steam': s_, 'slot': sl, 'pid': (MM.get(s_) or {}).get('pid') or 0, 'name': m['players'].get(s_, {}).get('name')} for s_, sl in m.get('slots', {}).items()]
     wpids = [(MM.get(w) or {}).get('pid') or 0 for w in m.get('watchers', [])]
+    # everyone (players and watchers) has our game server (Relay 8): only then the match plays on it, else on Relic
+    own_all = all((MM.get(s_) or {}).get('own') for s_ in list(m.get('slots', {})) + list(m.get('watchers', [])))
     wnames = [m['players'].get(w, {}).get('name') for w in m.get('watchers', [])]
     if p['role'] == 'watcher':
         return {'state': 'matched', 'match': m['id'], 'mode': m['mode'], 'role': 'watcher', 'host_steam': m['host_steam'],
-                'lobby': m['lobby'], 'map': m.get('map'), 'roster': roster, 'watchers': m['watchers'], 'watcher_pids': wpids, 'watcher_names': wnames, 'allies': [], 'enemies': []}
+                'lobby': m['lobby'], 'map': m.get('map'), 'roster': roster, 'watchers': m['watchers'], 'watcher_pids': wpids, 'watcher_names': wnames, 'allies': [], 'enemies': [], 'own_server': own_all}
     return {'state': 'matched', 'match': m['id'], 'mode': m['mode'], 'role': p['role'], 'slot': m.get('slots', {}).get(p['steam']),
             'roster': roster, 'watchers': m.get('watchers', []), 'watcher_pids': wpids, 'watcher_names': wnames, 'bots': bool(m.get('bots')),
-            'host_steam': m['host_steam'], 'lobby': m['lobby'], 'map': m.get('map'),
+            'host_steam': m['host_steam'], 'lobby': m['lobby'], 'map': m.get('map'), 'own_server': own_all,
             'allies': side([s for s in mine if s != p['steam']]), 'enemies': side(theirs)}
 
 def _clean(v, n=48):
