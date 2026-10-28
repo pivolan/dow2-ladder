@@ -14,12 +14,13 @@ send every game turn across the ocean. Protocol learned from captures (capture_p
                  0a fe <count> count*(<sender idx> <u16 LE len + data>) <m> m*<idx of peers silent in this tick>
 
 The client first sends a preamble: "DWR1" + IPv4 + port of the Relic relay the game wanted (Relay.dll 5-7), or since
-Relay.dll 8 "DWR2" + IPv4 + port + 1 byte: how many people are in the lobby (players and observers).
-Compatibility (DWR2): a session stays here only when everyone of the lobby comes (everyone has the add-on). Until then
-hello and ping are answered right away (as Relic would) and the rest is held; if somebody doesn't come within
-GATE_WAIT seconds, he plays on Relic's servers - then every peer of that session is passed on to the Relic relay its
-game wanted, with what it sent so far, and the answers we already gave are not repeated. Later peers follow the
-decision. Old DWR1 clients join right away (no compatibility).
+Relay.dll 8 "DWR2" + the same + 1 byte (players in the lobby, informational): "DWR2" = the player allows Relic as fallback.
+The game opens this connection when a lobby is created (host) or joined (guest) and keeps it through the match.
+Compatibility (DWR2): a guest whose session is not here (its host is not on this server) is passed on - to the one of
+our other servers (RELAY_PEERS) that has the session, else to the Relic relay its game wanted (the host plays without
+the add-on). A guest is told apart by its first peer announce "13 00 .. 0f 05" (it doesn't know its number yet).
+Until then hello and ping are answered right away (as Relic would) and the rest is held; when passing on, what the
+peer sent goes first and the answers we already gave are not repeated. Servers ask each other "DWRQ" + sid -> Y/N.
 Usage: battle_relay.py [port] [bind]   (default 47100 127.0.0.1)
 Peers silent for IDLE seconds are dropped (the game pings every ~3 s).
 """
@@ -29,12 +30,11 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 47100
 BIND = sys.argv[2] if len(sys.argv) > 2 else '127.0.0.1'
 TICK = 0.1
 IDLE = 60
-GATE_WAIT = float(os.environ.get('GATE_WAIT', '45'))
+DECIDE = 5                                          # s: no peer announce from a new session's first peer -> it's the host
+PEERS = [h for h in os.environ.get('RELAY_PEERS', '83.217.192.34,116.202.106.150,15.220.68.107').split(',') if h]
 _last_warn = {}
 LOG = os.environ.get('RELAY_LOG', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'battle_relay.jsonl'))
 sessions = {}                                       # sid bytes -> Session
-gates = {}                                          # sid -> Gate: DWR2 peers waiting for the whole lobby
-decided = {}                                        # sid -> ('ours' | 'relic', time)
 
 
 def log(**k):
@@ -129,48 +129,30 @@ def handle_msg(p, m, echo=True):
     log(ev='unknown', type=hex(t), len=len(m), head=m[:24].hex(), peer=p.addr)
 
 
-class Gate:
-    def __init__(self, sid, expected):
-        self.sid, self.expected, self.waiting, self.mode, self.t0 = sid, expected, [], None, time.time()
-        self.ev = asyncio.Event()
+async def find_peer(sid):
+    """which of our other servers has this session (its host)"""
+    for h in PEERS:                                     # "ip" or "ip:port"
+        hp = (h.rsplit(':', 1)[0], int(h.rsplit(':', 1)[1])) if ':' in h else (h, PORT)
+        try:
+            r2, w2 = await asyncio.wait_for(asyncio.open_connection(*hp), 2)
+            w2.write(b'DWRQ' + sid); await w2.drain()
+            a = await asyncio.wait_for(r2.readexactly(1), 2); w2.close()
+            if a == b'Y': return hp
+        except Exception: pass
+    return None
 
 
-def gate_finish(g, mode):
-    if g.mode: return
-    g.mode = mode; decided[g.sid] = (mode, time.time()); gates.pop(g.sid, None)
-    log(ev='gate', sid=int.from_bytes(g.sid, 'little'), mode=mode, came=len(g.waiting), expected=g.expected, waited=round(time.time() - g.t0, 1))
-    if mode == 'ours':                                  # join in the order they came, what they sent so far, answers already given
-        for p, held in g.waiting:
-            for m in held:
-                if m: handle_msg(p, m, echo=False)
-    g.ev.set()
-
-
-async def gate(p, sid, expected, held):
-    d = decided.get(sid)
-    if d and time.time() - d[1] < 3600:
-        if d[0] == 'ours':
-            for m in held:
-                if m: handle_msg(p, m, echo=False)
-        return d[0]
-    g = gates.get(sid) or gates.setdefault(sid, Gate(sid, expected))
-    g.expected = max(g.expected, expected); g.waiting.append((p, held))
-    if len(g.waiting) >= g.expected: gate_finish(g, 'ours')
-    else:
-        try: await asyncio.wait_for(g.ev.wait(), max(0.1, GATE_WAIT - (time.time() - g.t0)))
-        except asyncio.TimeoutError: gate_finish(g, 'relic')
-    return g.mode
-
-
-async def to_relic(q, w, p, relic, held, answered):
-    """pass this peer on to the Relic relay its game wanted: what it sent so far, then both ways as they are"""
+async def pass_on(q, w, p, dest, held, answered, pre=b''):
+    """pass this peer on (to our other server or to the Relic relay its game wanted): what it sent so far, then both
+    ways as they are"""
     try:
-        ur, uw = await asyncio.wait_for(asyncio.open_connection(*relic), 10)
+        ur, uw = await asyncio.wait_for(asyncio.open_connection(*dest), 10)
     except Exception as e:
-        log(ev='relic_fail', peer=p.addr, relic=f'{relic[0]}:{relic[1]}', err=repr(e)); return
+        log(ev='pass_fail', peer=p.addr, dest=f'{dest[0]}:{dest[1]}', err=repr(e)); return
     try: uw.get_extra_info('socket').setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     except Exception: pass
-    log(ev='to_relic', peer=p.addr, relic=f'{relic[0]}:{relic[1]}', held=len(held))
+    log(ev='pass_on', peer=p.addr, dest=f'{dest[0]}:{dest[1]}', to='ours' if pre else 'relic', held=len(held))
+    if pre: uw.write(pre)
     for m in held: uw.write(len(m).to_bytes(2, 'big') + m)
     await uw.drain()
 
@@ -210,11 +192,16 @@ async def handle(r, w):
         except Exception: pass
         await q.put(None)
     try:
-        pre = await asyncio.wait_for(r.readexactly(10), 15)
+        pre = await asyncio.wait_for(r.readexactly(4), 15)
+        if pre == b'DWRQ':                              # another server of ours asks: is this session here?
+            sid = await asyncio.wait_for(r.readexactly(4), 5)
+            w.write(b'Y' if sid in sessions else b'N'); await w.drain(); w.close(); return
+        pre += await asyncio.wait_for(r.readexactly(6), 15)
         if pre[:4] not in (b'DWR1', b'DWR2'): log(ev='bad_preamble', peer=p.addr, hex=pre.hex()); w.close(); return
-        expected = (await asyncio.wait_for(r.readexactly(1), 15))[0] if pre[:4] == b'DWR2' else 0
+        compat = pre[:4] == b'DWR2'
+        if compat: await asyncio.wait_for(r.readexactly(1), 15)
         rt = asyncio.ensure_future(reader())
-        if expected > 1:                                # compatibility: hold until the whole lobby is here, or pass on to Relic
+        if compat:
             relic = (socket.inet_ntoa(pre[4:8]), int.from_bytes(pre[8:10], 'big'))
             held, answered, sid = [], [], None
             while sid is None and len(held) < 64:
@@ -223,20 +210,22 @@ async def handle(r, w):
                 held.append(m)
                 if m[:1] in (b'\x15', b'\x14'): p.send(m); answered.append(m)
                 if m[:1] == b'\x15': sid = m[1:5]
-            if sid is not None:
-                gt = asyncio.ensure_future(gate(p, sid, expected, held))
-                while not gt.done():                    # keep answering pings and holding the rest while we wait
-                    gq = asyncio.ensure_future(q.get())
-                    done, _ = await asyncio.wait({gt, gq}, return_when=asyncio.FIRST_COMPLETED)
-                    if gq not in done: gq.cancel(); continue
-                    m = gq.result()
-                    if m is None: await q.put(None); break          # gone: let the code below see the end too
-                    if p.sess is not None: handle_msg(p, m); continue   # already joined here (held went in)
-                    held.append(m)
-                    if m[:1] == b'\x14': p.send(m); answered.append(m)
-                mode = await gt
-                if mode == 'relic':
-                    await to_relic(q, w, p, relic, held, answered); return
+            away, end = False, time.time() + DECIDE
+            while sid is not None and sid not in sessions:   # a new session here: its host, or a guest whose host is elsewhere?
+                try: m = await asyncio.wait_for(q.get(), max(0.05, end - time.time()))
+                except asyncio.TimeoutError: break           # no announce: the host
+                if m is None: return
+                held.append(m)
+                if m[:1] in (b'\x15', b'\x14'): p.send(m); answered.append(m); continue
+                away = m[:1] == b'\x13' and m[1] == 0 and m[3:5] == b'\x0f\x05'
+                break
+            if away and sid not in sessions:
+                h = await find_peer(sid)
+                if h: await pass_on(q, w, p, h, held, answered, pre=b'DWR1' + pre[4:10])
+                else: await pass_on(q, w, p, relic, held, answered)
+                return
+            for m in held:
+                if m: handle_msg(p, m, echo=False)
         while True:
             m = await asyncio.wait_for(q.get(), IDLE)
             if m is None: break
