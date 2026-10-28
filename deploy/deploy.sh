@@ -8,7 +8,7 @@ KEY=/root/.ssh/deploy_dow2-ladder
 export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o BatchMode=yes"
 LOCK=/run/dow2-web-deploy.lock
 exec 9>"$LOCK"; flock -n 9 || exit 0
-say() { telegram_send --chat -1003866396190 --thread 18850 text "$1" >/dev/null 2>&1 || true; echo "$1"; }
+say() { echo "$1"; }                     # only the journal (journalctl -u dow2-web-deploy): the owner wants no deploy notes in Telegram
 
 [ -d "$SRC/.git" ] || git clone -q git@github.com:pivolan/dow2-ladder.git "$SRC" || exit 1
 cd "$SRC" || exit 1
