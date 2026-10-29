@@ -516,7 +516,7 @@ def _assign_watchers():  # под MM_LOCK: зрителей — в собира�
                 m['players'][w['steam']] = {'name': w.get('name') or 'Player', 'watcher': True}
                 break
 
-RELAY_ORDER = ['83.217.192.34', '15.220.68.107', '116.202.106.150']   # owner 29.10: Moscow if everyone reaches it, then Warsaw (AWS), then Germany, else Relic
+RELAY_ORDER = ['15.220.68.107', '116.202.106.150']   # owner 29.10: Warsaw (AWS) if everyone reaches it, then Germany, else Relic; Moscow off (players report small lags through it)
 
 def _best_relay(steams):
     # Relay 9: every player pinged our game servers (relay_ping {ip: ms}, -1 = no answer). The match goes to the first server
