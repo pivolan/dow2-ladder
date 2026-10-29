@@ -180,7 +180,7 @@ def msgs(room, after):
         if after > 0:
             rows = c.execute('SELECT id, room, steam, text, ts FROM msg WHERE room=? AND id>? AND deleted=0 ORDER BY id LIMIT 200', (room, after)).fetchall()
         else:
-            rows = c.execute('SELECT id, room, steam, text, ts FROM msg WHERE room=? AND deleted=0 ORDER BY id DESC LIMIT 100', (room,)).fetchall()[::-1]
+            rows = c.execute('SELECT id, room, steam, text, ts FROM msg WHERE room=? AND deleted=0 ORDER BY id DESC LIMIT 1000', (room,)).fetchall()[::-1]   # the whole history at once (owner, 29.10)
         dead = [r[0] for r in c.execute('SELECT id FROM msg WHERE room=? AND deleted=1 AND id>? ORDER BY id DESC LIMIT 50', (room, max(0, after - 500)))]
     return {'room': room, 'msgs': [_msg(r) for r in rows], 'deleted': dead}
 
