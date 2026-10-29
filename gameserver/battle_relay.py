@@ -24,7 +24,7 @@ peer sent goes first and the answers we already gave are not repeated. Servers a
 Usage: battle_relay.py [port] [bind]   (default 47100 127.0.0.1)
 Peers silent for IDLE seconds are dropped (the game pings every ~3 s).
 """
-import asyncio, json, os, socket, sys, time
+import asyncio, json, os, socket, struct, sys, time
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 47100
 BIND = sys.argv[2] if len(sys.argv) > 2 else '127.0.0.1'
@@ -35,6 +35,17 @@ PEERS = [h for h in os.environ.get('RELAY_PEERS', '83.217.192.34,116.202.106.150
 _last_warn = {}
 LOG = os.environ.get('RELAY_LOG', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'battle_relay.jsonl'))
 sessions = {}                                       # sid bytes -> Session
+GAP = 0.25                                          # s: a player's turns this far apart count as a stall (a lost packet, a hiccup)
+TCP_QUICKACK, TCP_THIN_LINEAR_TIMEOUTS = 12, 16     # Linux socket options (not in the socket module everywhere)
+
+
+def tcp_info(w):
+    # (rtt ms, rttvar ms, retransmitted segments in all, lost now) of a peer connection, from Linux TCP_INFO; None elsewhere
+    try:
+        b = w.get_extra_info('socket').getsockopt(socket.IPPROTO_TCP, socket.TCP_INFO, 104)
+        lost, rtt, rttvar, total = struct.unpack_from('<I', b, 32)[0], struct.unpack_from('<I', b, 68)[0], struct.unpack_from('<I', b, 72)[0], struct.unpack_from('<I', b, 100)[0]
+        return rtt // 1000, rttvar // 1000, total, lost
+    except Exception: return None
 
 
 def log(**k):
@@ -44,7 +55,19 @@ def log(**k):
 
 
 class Peer:
-    def __init__(self, w, addr): self.w, self.addr, self.sess, self.idx, self.pid = w, addr, None, 0, b''
+    def __init__(self, w, addr):
+        self.w, self.addr, self.sess, self.idx, self.pid = w, addr, None, 0, b''
+        # what the connection was like, for the log when the player leaves: stalls in the turns (GAP), the longest one,
+        # TCP rtt (the worst seen) and retransmissions, how far the player's send buffer got behind
+        self.turns, self.last_turn, self.gaps, self.max_gap, self.max_rtt, self.retrans, self.max_buf = 0, 0.0, 0, 0.0, 0, 0, 0
+
+    def stats(self):
+        i = tcp_info(self.w)
+        if i:
+            self.max_rtt = max(self.max_rtt, i[0]); self.retrans = i[2]
+        return dict(peer=self.addr, idx=self.idx, turns=self.turns, gaps=self.gaps, max_gap_ms=round(self.max_gap * 1000),
+                    rtt_ms=i[0] if i else None, rttvar_ms=i[1] if i else None, max_rtt_ms=self.max_rtt, retrans=self.retrans,
+                    max_buf=self.max_buf)
 
     def send(self, m):
         if self.w.is_closing(): return
@@ -54,7 +77,7 @@ class Peer:
 class Session:
     def __init__(self, sid):
         self.sid, self.peers, self.next_idx, self.queue, self.ticker = sid, [], 1, [], None
-        self.started = time.time(); self.ticks = 0; self.turn_msgs = 0
+        self.started = time.time(); self.ticks = 0; self.turn_msgs = 0; self.late = 0; self.max_late = 0.0
 
     def join(self, p):
         p.sess, p.idx = self, self.next_idx; self.next_idx += 1; self.peers.append(p)
@@ -64,10 +87,17 @@ class Session:
         if not self.peers:
             if self.ticker: self.ticker.cancel()
             sessions.pop(self.sid, None)
-            log(ev='session_end', sid=int.from_bytes(self.sid, 'little'), secs=round(time.time() - self.started), ticks=self.ticks, turns=self.turn_msgs)
+            log(ev='session_end', sid=int.from_bytes(self.sid, 'little'), secs=round(time.time() - self.started), ticks=self.ticks, turns=self.turn_msgs,
+                late_ticks=self.late, max_late_ms=round(self.max_late * 1000))
 
     def queue_turn(self, p, data):
         self.queue.append((p.idx, data)); self.turn_msgs += 1
+        now = time.monotonic()
+        if p.last_turn:
+            g = now - p.last_turn
+            if g > GAP: p.gaps += 1
+            p.max_gap = max(p.max_gap, g)
+        p.last_turn = now; p.turns += 1
         if not self.ticker: self.ticker = asyncio.ensure_future(self.tick_loop())
 
     async def tick_loop(self):
@@ -75,6 +105,10 @@ class Session:
         while self.peers:
             nxt += TICK
             await asyncio.sleep(max(0, nxt - time.monotonic()))
+            late = time.monotonic() - nxt                    # the tick went out this much after its time
+            if late > 0.03: self.late += 1
+            self.max_late = max(self.max_late, late)
+            if late > 0.5: nxt = time.monotonic()            # after a long hold: carry on from now, no burst of catch-up ticks
             q, self.queue = self.queue, []
             sent = {i for i, _ in q}
             silent = [p.idx for p in self.peers if p.idx not in sent]
@@ -83,7 +117,13 @@ class Session:
             m += bytes([len(silent)]) + bytes(silent)
             for p in list(self.peers): p.send(bytes(m))
             self.ticks += 1
-            await asyncio.gather(*(p.w.drain() for p in self.peers if not p.w.is_closing()), return_exceptions=True)
+            # no waiting here for the players' connections to take the data (that held the tick for everyone when one
+            # player's connection stalled): the data sits in that player's buffer, which is watched instead
+            for p in self.peers:
+                try: p.max_buf = max(p.max_buf, p.w.transport.get_write_buffer_size())
+                except Exception: pass
+            if self.ticks % 50 == 0:
+                for p in self.peers: p.stats()                # the worst rtt is sampled every 5 s
 
 
 def handle_msg(p, m, echo=True):
@@ -179,8 +219,9 @@ async def pass_on(q, w, p, dest, held, answered, pre=b''):
 
 async def handle(r, w):
     sock = w.get_extra_info('socket')
-    try: sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    except Exception: pass
+    for opt in (socket.TCP_NODELAY, TCP_THIN_LINEAR_TIMEOUTS):   # thin stream: a lost packet is sent again without the
+        try: sock.setsockopt(socket.IPPROTO_TCP, opt, 1)           # exponential back-off of the timeouts
+        except Exception: pass
     a = w.get_extra_info('peername'); p = Peer(w, f'{a[0]}:{a[1]}')
     q = asyncio.Queue(); rt = None
 
@@ -189,6 +230,8 @@ async def handle(r, w):
             while True:
                 n = int.from_bytes(await r.readexactly(2), 'big')
                 await q.put(await r.readexactly(n) if n else b'')
+                try: sock.setsockopt(socket.IPPROTO_TCP, TCP_QUICKACK, 1)   # acknowledge at once: the player's next turn
+                except Exception: pass                                    # does not wait for our delayed ack
         except Exception: pass
         await q.put(None)
     try:
@@ -236,7 +279,7 @@ async def handle(r, w):
     finally:
         if rt: rt.cancel()
         if p.sess:
-            log(ev='leave', sid=int.from_bytes(p.sess.sid, 'little'), idx=p.idx, peer=p.addr)
+            log(ev='leave', sid=int.from_bytes(p.sess.sid, 'little'), **p.stats())
             p.sess.leave(p)
         try: w.close()
         except Exception: pass
