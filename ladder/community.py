@@ -8,6 +8,11 @@
 #
 # GET  login?nonce=          -> redirect to Steam            GET  return?...      <- Steam comes back here
 # GET  claim?nonce=          -> {token, steam, name, avatar} (once, 10 minutes)
+# POST local   {steam, name, device[, token]} -> sign-in with the Steam account logged in on this computer, no browser
+#      (steamcommunity.com is blocked in Russia: the OpenID page never comes back there). The Steam id is the player's own
+#      claim, so the account is bound to the first computer (device = hash of the machine id) that signs in with it; another
+#      computer needs one sign-in through the browser (token of that session) to be bound too.
+# Every step is written to the journal (journalctl -u dow2-ladder | grep community).
 # POST me      {token}       -> the signed-in profile (name, avatar, rating)
 # POST hello   {token?, state, uid?}  every ~30 s from the launcher: "I'm here" -> {online: [...]}
 # GET  online                -> who has the launcher open (signed in, seen in the last 90 s)
@@ -30,8 +35,12 @@ LOCK = threading.Lock()
 PRESENCE = {}                                       # steam -> {'seen', 'state'}  (in memory: who is here now)
 RATE = {}                                           # steam -> [times of the last messages]
 
+def log(event, **kv):
+    print('community: %s %s' % (event, ' '.join('%s=%s' % (k, str(v)[:120].replace(' ', '_')) for k, v in kv.items())), flush=True)
+
 def db():
     c = sqlite3.connect(DB, timeout=30)
+    c.execute('CREATE TABLE IF NOT EXISTS device (steam TEXT, device TEXT, first INTEGER, last INTEGER, PRIMARY KEY (steam, device))')
     c.execute('CREATE TABLE IF NOT EXISTS sess (token TEXT PRIMARY KEY, steam TEXT, ts INTEGER)')
     c.execute('CREATE TABLE IF NOT EXISTS pending (nonce TEXT PRIMARY KEY, token TEXT, ts INTEGER)')
     c.execute('CREATE TABLE IF NOT EXISTS prof (steam TEXT PRIMARY KEY, name TEXT, avatar TEXT, ts INTEGER, banned INTEGER DEFAULT 0)')
@@ -95,6 +104,7 @@ def openid_return(query):
     q = {k: v[0] for k, v in urllib.parse.parse_qs(query).items()}
     nonce = q.get('nonce', '')
     if not re.fullmatch(r'[A-Za-z0-9_-]{16,64}', nonce): return None, 'bad nonce'
+    if q.get('openid.mode') == 'cancel': return None, 'cancelled on the Steam page'
     if not q.get('openid.return_to', '').startswith(BASE + '/ladder/api/c/return'): return None, 'bad return_to'
     m = re.fullmatch(r'https://steamcommunity\.com/openid/id/(\d{17})', q.get('openid.claimed_id', ''))
     if not m: return None, 'no Steam id'
@@ -117,6 +127,26 @@ def claim(nonce):
     if time.time() - r[1] > 600: return {'ok': False, 'error': 'expired'}
     steam = _session(r[0])
     return dict(_user(steam), ok=True, token=r[0], rating=_rating(steam))
+
+def local(d, ip=''):
+    steam = str(d.get('steam', '')); dev = str(d.get('device', ''))[:64].lower()
+    if not re.fullmatch(r'7656119\d{10}', steam): log('local-bad', ip=ip, steam=steam); return {'ok': False, 'error': 'no Steam account found on this computer'}
+    if not re.fullmatch(r'[0-9a-f]{32,64}', dev): log('local-bad', ip=ip, steam=steam, device=dev[:12]); return {'ok': False, 'error': 'bad device id'}
+    now = int(time.time())
+    with db() as c:
+        known = [r[0] for r in c.execute('SELECT device FROM device WHERE steam=?', (steam,))]
+        if known and dev not in known and _session(d.get('token')) != steam:
+            log('local-other-computer', ip=ip, steam=steam, device=dev[:12], known=len(known))
+            return {'ok': False, 'need_browser': True, 'error': 'this Steam account signed in from another computer: confirm once through Steam in the browser'}
+        c.execute('INSERT INTO device VALUES(?,?,?,?) ON CONFLICT(steam, device) DO UPDATE SET last=excluded.last', (steam, dev, now, now))
+        token = secrets.token_urlsafe(32)
+        c.execute('INSERT INTO sess VALUES(?,?,?)', (token, steam, now))
+    p = profile(steam, refresh=True)
+    nm = str(d.get('name', '')).strip()[:48]
+    if p['name'] in ('', 'Player') and nm:
+        with db() as c: c.execute('UPDATE prof SET name=? WHERE steam=?', (nm, steam))
+    log('local-ok', ip=ip, steam=steam, device=dev[:12], first=not known)
+    return dict(_user(steam), ok=True, token=token, rating=_rating(steam))
 
 # ---------- presence and chat ----------
 def hello(d):
@@ -197,21 +227,28 @@ div{max-width:420px;text-align:center;line-height:1.5}b{color:#d4b25c}</style><d
 
 def handle(h, method, u, d):
     p = u.path[len('/ladder/api/c/'):]
+    ip = h.headers.get('X-Real-IP') or h.headers.get('X-Forwarded-For', '').split(',')[0] or h.client_address[0]
     if method == 'GET':
         qs = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         if p == 'login':
             if not re.fullmatch(r'[A-Za-z0-9_-]{16,64}', qs.get('nonce', '')): return h.send(400, {'error': 'nonce'}, cache=0)
+            log('login', ip=ip, nonce=qs['nonce'][:8], ua=h.headers.get('User-Agent', '')[:60])
             h.send_response(302); h.send_header('Location', login_url(qs['nonce'])); h.send_header('Cache-Control', 'no-store')
             h.send_header('Content-Length', '0'); h.end_headers(); return
         if p == 'return':
             steam, err = openid_return(u.query)
+            log('return', ip=ip, nonce=qs.get('nonce', '')[:8], steam=steam or '-', error=err or '-')
             if err: return h.send_html(PAGE % ('Не получилось войти / Sign-in failed: %s' % html.escape(err)), cache=0)
             name = html.escape(profile(steam, refresh=True)['name'])
             return h.send_html(PAGE % ('Вы вошли как <b>%s</b>. Вернитесь в лаунчер.<br><br>Signed in as <b>%s</b>. Go back to the launcher.' % (name, name)), cache=0)
-        if p == 'claim': return h.send(200, claim(qs.get('nonce', '')), cache=0)
+        if p == 'claim':
+            r = claim(qs.get('nonce', ''))
+            if not r.get('wait'): log('claim', ip=ip, nonce=qs.get('nonce', '')[:8], ok=r.get('ok'), steam=r.get('steam', '-'), error=r.get('error', '-'))
+            return h.send(200, r, cache=0)
         if p == 'online': return h.send(200, {'online': online()}, cache=0)
         if p == 'msgs': return h.send(200, msgs(qs.get('room', 'all'), qs.get('after', '0')), cache=0)
         return h.send(404, {'error': 'not found'}, cache=0)
+    if p == 'local': return h.send(200, local(d or {}, ip), cache=0)
     fn = {'hello': hello, 'say': say, 'me': me, 'logout': logout, 'mod': mod}.get(p)
     if not fn: return h.send(404, {'error': 'not found'}, cache=0)
     return h.send(200, fn(d or {}), cache=0)
