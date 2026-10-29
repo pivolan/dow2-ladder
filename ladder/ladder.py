@@ -516,18 +516,19 @@ def _assign_watchers():  # под MM_LOCK: зрителей — в собира�
                 m['players'][w['steam']] = {'name': w.get('name') or 'Player', 'watcher': True}
                 break
 
+RELAY_ORDER = ['83.217.192.34', '15.220.68.107']   # owner 29.10: Moscow if everyone reaches it, then Warsaw (AWS), else Relic
+
 def _best_relay(steams):
-    # Relay 9: every player pinged our game servers (relay_ping {ip: ms}, -1 = no answer). The best server for the match is
-    # the one with the lowest worst ping among everyone (then the lowest sum). None = someone has no ping data (older add-on):
-    # the add-on then takes the first server that answers, as before. '' = no server answers everyone: play on Relic.
+    # Relay 9: every player pinged our game servers (relay_ping {ip: ms}, -1 = no answer). The match goes to the first server
+    # of RELAY_ORDER that every player reaches; none =  (play on Relic). 0 ms counts as no answer: no server is that close
+    # over the internet, it is something on the player own PC (VPN, a blocking bypass, an antivirus) answering for it -
+    # 29.10 a player from Ukraine "reached" Moscow that way and the match never connected. Someone without pings (an older
+    # add-on): nothing is known about what he reaches - Relic too.
     pings = [(MM.get(s) or {}).get('ping') or {} for s in steams]
-    if not pings or not all(pings): return None
-    best = None
-    for h in set.intersection(*(set(x) for x in pings)):
-        v = [x[h] for x in pings]
-        if min(v) < 0: continue
-        if best is None or (max(v), sum(v)) < best[0]: best = ((max(v), sum(v)), h)
-    return best[1] if best else ''
+    if not pings or not all(pings): return ''
+    for h in RELAY_ORDER:
+        if all(x.get(h, -1) > 0 for x in pings): return h
+    return ''
 
 def _player_view(p):  # под MM_LOCK: что вернуть игроку в poll
     if p['mode'] == WATCH and p['state'] == 'searching':
