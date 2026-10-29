@@ -42,6 +42,19 @@ except Exception: print(0)')
 ladder/"; else
     # every module of the service (a new one must not be forgotten: 29.10 ladder.py imported community.py that was not
     # installed - the ladder was down 6 minutes); the previous files are kept and put back if the new ones do not answer
+    # hand edits on the server (another session, a quick fix) are not overwritten: a live file that differs from what the
+    # last deploy put there stops the ladder part until the edit is in the repo (29.10: a deploy wiped the owner's edits)
+    manual=""
+    for f in ladder/*.py ladder/ladder.html ladder/fb_admin.html ladder/maps.txt; do
+      live=/srv/ladder/app/$(basename $f); [ -f "$live" ] || continue
+      if [ -n "$OLD" ] && git cat-file -e "$OLD:$f" 2>/dev/null && ! git show "$OLD:$f" | cmp -s - "$live" && ! git show "$NEW:$f" | cmp -s - "$live"; then manual="$manual $(basename $f)"; fi
+    done
+    if [ -n "$manual" ]; then
+      mkdir -p /srv/ladder/backup; for f in $manual; do cp -a /srv/ladder/app/$f /srv/ladder/backup/$f.manual.$(date +%Y%m%d-%H%M%S); done
+      say "⛔ dow2-web: $MSG — ладдер НЕ выложен: на сервере правлены руками:$manual (копия в /srv/ladder/backup). Перенесите правки в репозиторий"
+      pending="$pending
+ladder/"
+    else
     B=/srv/ladder/app.prev; rm -rf $B; cp -a /srv/ladder/app $B
     install -o root -g root -m 644 ladder/*.py ladder/ladder.html ladder/fb_admin.html ladder/maps.txt /srv/ladder/app/
     rm -f /srv/ladder/app/guess_from_replays.py; install -o root -g root -m 644 ladder/guess_from_replays.py /srv/ladder/
@@ -49,6 +62,7 @@ ladder/"; else
     for i in 1 2 3 4 5 6 7 8 9 10; do sleep 2; curl -sf -m 5 http://127.0.0.1:8217/ladder/api/mm/status >/dev/null && { ok=1; break; }; done
     if [ -n "$ok" ]; then done_parts="$done_parts ладдер"
     else cp -a $B/. /srv/ladder/app/; systemctl restart dow2-ladder; say "⛔ dow2-web: ладдер не поднялся на новых файлах - вернул прежние ($(journalctl -u dow2-ladder -n 3 --no-pager | tail -1 | cut -c1-200))"; fi
+    fi
   fi
 fi
 # ---- player statistics (service relicstats)
