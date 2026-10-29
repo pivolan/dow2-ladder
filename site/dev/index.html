@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="/elite/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Elite Launcher — Development</title>
+<style>
+@font-face { font-family: Cinzel; src: url(fonts/cinzel-700.ttf); font-weight: 700; font-display: swap; }
+@font-face { font-family: CinzelCyr; src: url(fonts/cormorantsc-cyr-700.ttf); font-weight: 700 900; unicode-range: U+0400-045F, U+0490-0491, U+2116; font-display: swap; }
+@font-face { font-family: Spectral; src: url(fonts/spectral-400.ttf); font-weight: 400; font-display: swap; }
+@font-face { font-family: Spectral; src: url(fonts/spectral-600.ttf); font-weight: 600; font-display: swap; }
+:root { --bg: #0d0b09; --panel: #16130f; --panel2: #1c1813; --line: #3a3124; --gold: #d9b25f; --gold-2: #f0d48f;
+  --text: #e6dccb; --muted: #a39782; --dim: #7d725f; --red: #c42a24; --green: #7fb35a; --amber: #e0a526; --blue: #6a9fd4; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 Spectral, Georgia, serif; }
+a { color: var(--gold); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+.top { border-bottom: 1px solid var(--line); background: #110e0b; }
+.top .wrap { display: flex; align-items: center; gap: 14px; padding-block: 10px; flex-wrap: wrap; }
+.top .back { font: 700 14px Cinzel, CinzelCyr, serif; letter-spacing: .06em; text-decoration: none; }
+.langs { margin-left: auto; display: inline-flex; gap: 2px; }
+.langs a { font: 700 12px Cinzel, CinzelCyr, serif; padding: 3px 7px; border: 1px solid #6b5420; color: #f6e2b0; cursor: pointer; text-decoration: none; }
+.langs a.on { background: var(--gold); color: #1a1205; border-color: var(--gold); }
+header.hero { border-bottom: 1px solid var(--line); background: radial-gradient(ellipse at 50% 0%, #2c120e 0%, #160c08 50%, var(--bg) 85%); }
+header.hero .wrap { padding-block: 34px 26px; }
+h1 { font: 700 clamp(32px, 6vw, 54px)/1.1 Cinzel, CinzelCyr, serif; color: var(--gold); margin: 0 0 8px; letter-spacing: .04em; text-wrap: balance; }
+.lead { color: var(--muted); max-width: 760px; margin: 0 0 20px; font-size: 17px; }
+.flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; counter-reset: f; }
+.flow div { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px 12px 44px; position: relative; font-size: 15px; }
+.flow div::before { counter-increment: f; content: counter(f); position: absolute; left: 12px; top: 12px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--gold); color: #1a1205; display: grid; place-items: center; font: 700 13px Cinzel, serif; }
+.flow b { display: block; color: var(--gold-2); font-weight: 600; }
+main { padding-block: 22px 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+main *, .flow > div { min-width: 0; }
+.commits li, .task .t, .small, td { overflow-wrap: anywhere; }
+h2 { font: 700 20px Cinzel, CinzelCyr, serif; color: var(--gold); letter-spacing: .06em; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, #6b5420, transparent); }
+.panel { background: var(--panel); border: 1px solid var(--line); padding: 16px 18px; }
+.now { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.state { display: flex; align-items: center; gap: 12px; font-size: 18px; }
+.light { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--dim); }
+.light.working, .light.building { background: var(--amber); box-shadow: 0 0 10px var(--amber); animation: pulse 1.6s infinite; }
+.light.checking { background: var(--blue); box-shadow: 0 0 10px var(--blue); animation: pulse 1.6s infinite; }
+.light.releasing { background: var(--red); box-shadow: 0 0 12px var(--red); animation: pulse 1s infinite; }
+.light.idle { background: var(--green); }
+@keyframes pulse { 50% { opacity: .45; } }
+.small { font-size: 14px; color: var(--muted); }
+.why { margin-top: 8px; padding: 10px 12px; border-left: 3px solid var(--amber); background: #1b160d; font-size: 15px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.group h3 { font: 700 13px Cinzel, CinzelCyr, serif; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+.group h3:first-child { margin-top: 0; }
+.task { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; padding: 8px 0; border-top: 1px solid #2a2318; }
+.task:first-of-type { border-top: 0; }
+.src { font: 700 11px Cinzel, CinzelCyr, serif; letter-spacing: .06em; padding: 2px 7px; border: 1px solid; align-self: start; white-space: nowrap; min-width: 76px; text-align: center; }
+.src.owner { color: var(--gold-2); border-color: #7a6026; background: #241b0c; }
+.src.repo { color: #a9c7e6; border-color: #34506b; background: #111a24; }
+.task .t { color: var(--text); }
+.task .m { grid-column: 2; font-size: 13px; color: var(--dim); }
+.task .n { grid-column: 2; font-size: 14px; color: var(--muted); }
+.empty { color: var(--dim); font-size: 14px; }
+.rel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.rel .panel h3 { font: 700 15px Cinzel, CinzelCyr, serif; color: var(--gold-2); margin: 0 0 8px; }
+.kv { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; padding: 2px 0; }
+.kv span:first-child { color: var(--muted); }
+.ok { color: var(--green); } .warn { color: var(--amber); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 600; color: var(--muted); padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); }
+td { padding: 5px 8px 5px 0; border-bottom: 1px solid #241e15; vertical-align: top; }
+.scroll { overflow-x: auto; }
+code { font: 13px ui-monospace, Consolas, monospace; color: #e9d7a8; }
+.commits { margin: 6px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.commits li { padding: 3px 0; border-top: 1px solid #241e15; }
+.repo + .repo { margin-top: 18px; }
+.repo h3 { font: 700 16px Cinzel, CinzelCyr, serif; color: var(--gold-2); margin: 0 0 4px; }
+.log li { list-style: none; padding: 4px 0; border-top: 1px solid #241e15; font-size: 14px; }
+.log { margin: 0; padding: 0; max-height: 420px; overflow: auto; }
+.log time, .when { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: 8px; }
+footer { color: var(--dim); font-size: 13px; text-align: center; padding: 10px 0 40px; }
+@media (max-width: 860px) { .flow, .rel { grid-template-columns: repeat(2, minmax(0, 1fr)); } .now, .cols { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) { .flow, .rel { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap">
+  <a class="back" href="./" data-i="back">← Elite Launcher</a>
+  <span class="langs" id="langs"><a data-l="en">EN</a><a data-l="ru">RU</a><a data-l="es">ES</a><a data-l="fr">FR</a><a data-l="de">DE</a></span>
+</div></div>
+
+<header class="hero"><div class="wrap">
+  <h1 data-i="h1">Development</h1>
+  <p class="lead" data-i="lead">How changes reach the launcher, what is being done right now, what waits, and why a release has not happened yet. Updates by itself.</p>
+  <div class="flow">
+    <div><b data-i="f1h">Owner's requests first</b><span data-i="f1">They are done before anything else.</span></div>
+    <div><b data-i="f2h">Then the repositories</b><span data-i="f2">Pull requests merged into main, in their turn.</span></div>
+    <div><b data-i="f3h">Staging</b><span data-i="f3">The pipeline builds it; players don't see it yet.</span></div>
+    <div><b data-i="f4h">Check, then release</b><span data-i="f4">Works and fits — released. Breaks something — reverted.</span></div>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <section class="now">
+    <div class="panel"><h2 data-i="nowh">Right now</h2><div class="state"><span class="light" id="light"></span><b id="stateText">…</b></div>
+      <div class="small" id="stateSince"></div></div>
+    <div class="panel"><h2 data-i="nexth">Next release</h2><div id="next">…</div></div>
+  </section>
+
+  <section class="panel"><h2 data-i="queueh">Queue</h2>
+    <div class="cols"><div class="group" id="qActive"></div><div class="group" id="qDone"></div></div></section>
+
+  <section><h2 data-i="relh">Releases</h2><div class="rel" id="rel"></div></section>
+
+  <section class="panel"><h2 data-i="repoh">Repositories</h2><div id="repos"></div></section>
+
+  <section class="panel"><h2 data-i="logh">Log</h2><ul class="log" id="log"></ul></section>
+</main>
+<footer><span data-i="upd">Updated</span> <span id="gen">…</span></footer>
+
+<script>
+var I18N = {
+ en: { back: "← Elite Launcher", h1: "Development", lead: "How changes reach the launcher, what is being done right now, what waits, and why a release has not happened yet. Updates by itself.",
+  f1h: "Owner's requests first", f1: "They are done before anything else.", f2h: "Then the repositories", f2: "Pull requests merged into main, in their turn.",
+  f3h: "Staging", f3: "The pipeline builds it; players don't see it yet.", f4h: "Check, then release", f4: "Works and fits — released. Breaks something — reverted.",
+  nowh: "Right now", nexth: "Next release", queueh: "Queue", relh: "Releases", repoh: "Repositories", logh: "Log", upd: "Updated",
+  s_idle: "Nothing is being built or released", s_working: "Working", s_building: "Building", s_checking: "Checking", s_releasing: "Releasing to the players",
+  busy: "The store is being updated right now", since: "since", noNext: "No release planned", why: "Why not yet",
+  q_in_progress: "In progress", q_checking: "Being checked", q_staged: "On staging", q_queued: "Waiting", q_later: "Later", q_released: "Released", q_rejected: "Rejected",
+  owner: "OWNER", repo: "REPO", none: "Nothing here",
+  launcher: "Launcher", addons: "Add-ons", web: "Site and ladder", players: "Players have", inMain: "In main", staged: "On staging",
+  notReleased: "In main, not released", allOut: "Everything in main is released", deployed: "Deployed", autoDeploy: "Deploys by itself when the automatch queue is empty",
+  waitDeploy: "Waiting to deploy", addon: "Add-on", waiting: "waiting", same: "released", separate: "built separately",
+  branch: "Branch", author: "Author", updated: "Updated", status: "Status", merged: "in main", ahead: "{n} not in main", prs: "Pull requests",
+  pr_open: "open", pr_merged: "merged", pr_closed: "closed", mainHead: "main:", ago_m: "{n} min ago", ago_h: "{n} h ago", ago_d: "{n} d ago", now: "just now" },
+ ru: { back: "← Elite Launcher", h1: "Разработка", lead: "Как изменения попадают в лаунчер, что делается прямо сейчас, что ждёт своей очереди и почему релиза ещё нет. Обновляется само.",
+  f1h: "Сначала — пожелания владельца", f1: "Делаются раньше всего остального.", f2h: "Потом — из репозиториев", f2: "Pull request'ы, влитые в main, — в свою очередь.",
+  f3h: "Стейджинг", f3: "Пайплайн собирает, игроки ещё не видят.", f4h: "Проверка, потом релиз", f4: "Работает и не противоречит — выпускаем. Ломает — откатываем.",
+  nowh: "Сейчас", nexth: "Следующий релиз", queueh: "Очередь", relh: "Релизы", repoh: "Репозитории", logh: "Журнал", upd: "Обновлено",
+  s_idle: "Ничего не собирается и не выкладывается", s_working: "Идёт работа", s_building: "Сборка", s_checking: "Проверка", s_releasing: "Выкладка игрокам",
+  busy: "Прямо сейчас обновляется магазин дополнений", since: "с", noNext: "Релиз не запланирован", why: "Почему релиза ещё нет",
+  q_in_progress: "В работе", q_checking: "На проверке", q_staged: "На стейджинге", q_queued: "Ждут очереди", q_later: "Отложено", q_released: "Выпущено", q_rejected: "Отклонено",
+  owner: "ВЛАДЕЛЕЦ", repo: "РЕПО", none: "Пусто",
+  launcher: "Лаунчер", addons: "Дополнения", web: "Сайт и ладдер", players: "У игроков", inMain: "В main", staged: "На стейджинге",
+  notReleased: "В main, но не выпущено", allOut: "Всё из main выпущено", deployed: "Выкачено", autoDeploy: "Выкатывается само, когда очередь автоматча пуста",
+  waitDeploy: "Ждёт выкатки", addon: "Дополнение", waiting: "ждёт", same: "выпущено", separate: "собирается отдельно",
+  branch: "Ветка", author: "Автор", updated: "Обновлена", status: "Состояние", merged: "в main", ahead: "{n} не в main", prs: "Pull request'ы",
+  pr_open: "открыт", pr_merged: "влит", pr_closed: "закрыт", mainHead: "main:", ago_m: "{n} мин назад", ago_h: "{n} ч назад", ago_d: "{n} дн назад", now: "только что" },
+ es: { h1: "Desarrollo", lead: "Cómo llegan los cambios al launcher, qué se hace ahora, qué espera y por qué aún no hay versión. Se actualiza solo.",
+  f1h: "Primero, lo que pide el dueño", f1: "Se hace antes que lo demás.", f2h: "Después, los repositorios", f2: "Pull requests en main, a su turno.",
+  f3h: "Staging", f3: "El pipeline lo compila; los jugadores aún no lo ven.", f4h: "Revisión y publicación", f4: "Si funciona, se publica. Si rompe algo, se revierte.",
+  nowh: "Ahora", nexth: "Próxima versión", queueh: "Cola", relh: "Versiones", repoh: "Repositorios", logh: "Registro", upd: "Actualizado",
+  q_in_progress: "En curso", q_checking: "En revisión", q_staged: "En staging", q_queued: "En espera", q_later: "Más tarde", q_released: "Publicado", q_rejected: "Rechazado", why: "Por qué aún no" },
+ fr: { h1: "Développement", lead: "Comment les changements arrivent au launcher, ce qui se fait maintenant, ce qui attend et pourquoi il n'y a pas encore de version. Mis à jour tout seul.",
+  f1h: "D'abord les demandes du propriétaire", f1: "Faites avant tout le reste.", f2h: "Ensuite les dépôts", f2: "Les pull requests fusionnées dans main, à leur tour.",
+  f3h: "Staging", f3: "Le pipeline le construit ; les joueurs ne le voient pas encore.", f4h: "Vérification, puis publication", f4: "Ça marche : publié. Ça casse : annulé.",
+  nowh: "En ce moment", nexth: "Prochaine version", queueh: "File", relh: "Versions", repoh: "Dépôts", logh: "Journal", upd: "Mis à jour",
+  q_in_progress: "En cours", q_checking: "En vérification", q_staged: "En staging", q_queued: "En attente", q_later: "Plus tard", q_released: "Publié", q_rejected: "Refusé", why: "Pourquoi pas encore" },
+ de: { h1: "Entwicklung", lead: "Wie Änderungen in den Launcher kommen, was gerade passiert, was wartet und warum es noch kein Release gibt. Aktualisiert sich selbst.",
+  f1h: "Zuerst die Wünsche des Besitzers", f1: "Werden vor allem anderen erledigt.", f2h: "Dann die Repositories", f2: "Pull Requests in main, der Reihe nach.",
+  f3h: "Staging", f3: "Die Pipeline baut es; Spieler sehen es noch nicht.", f4h: "Prüfen, dann veröffentlichen", f4: "Läuft es: veröffentlicht. Macht es etwas kaputt: zurückgenommen.",
+  nowh: "Gerade jetzt", nexth: "Nächstes Release", queueh: "Warteschlange", relh: "Releases", repoh: "Repositories", logh: "Protokoll", upd: "Aktualisiert",
+  q_in_progress: "In Arbeit", q_checking: "In Prüfung", q_staged: "Im Staging", q_queued: "Wartet", q_later: "Später", q_released: "Veröffentlicht", q_rejected: "Abgelehnt", why: "Warum noch nicht" }
+};
+var lang = "en", D = null;
+function t(k, v) { var s = (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function L(o, k) { if (!o) return ""; var ru = o[(k || "") + "ru"], en = o[(k || "") + "en"]; return lang === "ru" ? (ru || en || "") : (en || ru || ""); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function ago(ts) { if (!ts) return ""; var s = Date.now() / 1000 - (typeof ts === "string" ? Date.parse(ts) / 1000 : ts);
+  if (s < 90) return t("now"); if (s < 5400) return t("ago_m", { n: Math.round(s / 60) }); if (s < 172800) return t("ago_h", { n: Math.round(s / 3600) }); return t("ago_d", { n: Math.round(s / 86400) }); }
+function when(ts) { var d = new Date(ts * 1000); return d.toLocaleString(lang, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+function $(id) { return document.getElementById(id); }
+
+function render() {
+  if (!D) return;
+  var st = D.state || {}, s = st.state || "idle";
+  $("light").className = "light " + s;
+  $("stateText").textContent = t("s_" + s) + (L(st) ? " — " + L(st) : "");
+  $("stateSince").textContent = (st.since ? t("since") + " " + when(st.since) : "") + (st.store_busy ? " · " + t("busy") : "");
+  var n = D.next || {};
+  $("next").innerHTML = (L(n) ? "<div class='state'><b>" + esc(L(n)) + "</b></div>" + (n.when ? "<div class='small'>" + esc(n.when) + "</div>" : "") : "<div class='small'>" + esc(t("noNext")) + "</div>")
+    + (L(n, "why_") ? "<div class='why'><b>" + esc(t("why")) + ":</b> " + esc(L(n, "why_")) + "</div>" : "");
+  var q = D.queue || [];
+  function grp(statuses, title, limit) {
+    var items = q.filter(function (x) { return statuses.indexOf(x.status) >= 0; });
+    items.sort(function (a, b) { return (a.source === b.source ? 0 : a.source === "owner" ? -1 : 1) || (b.updated - a.updated); });
+    if (limit) items = items.slice(0, limit);
+    return "<h3>" + esc(title) + "</h3>" + (items.length ? items.map(function (x) {
+      return "<div class='task'><span class='src " + x.source + "'>" + esc(t(x.source)) + "</span><span class='t'>" + esc(L(x)) + "</span>"
+        + (L(x, "note_") ? "<span class='n'>" + esc(L(x, "note_")) + "</span>" : "")
+        + "<span class='m'>" + esc([x.target, x.ref, ago(x.updated)].filter(Boolean).join(" · ")) + "</span></div>";
+    }).join("") : "<div class='empty'>" + esc(t("none")) + "</div>");
+  }
+  $("qActive").innerHTML = grp(["in_progress"], t("q_in_progress")) + grp(["checking"], t("q_checking")) + grp(["staged"], t("q_staged")) + grp(["queued"], t("q_queued")) + grp(["later"], t("q_later"));
+  $("qDone").innerHTML = grp(["released"], t("q_released"), 12) + grp(["rejected"], t("q_rejected"), 6);
+  // releases
+  var l = D.launcher || {}, un = l.unreleased || [];
+  var h = "<div class='panel'><h3>" + esc(t("launcher")) + "</h3><div class='kv'><span>" + esc(t("players")) + "</span><b>" + esc(l.released || "—") + "</b></div>"
+    + "<div class='kv'><span>" + esc(t("inMain")) + "</span><b>" + esc(l.main_version || "—") + "</b></div>"
+    + (l.staged && l.staged.length ? "<div class='kv'><span>" + esc(t("staged")) + "</span><b class='warn'>" + esc(l.staged.join(", ")) + "</b></div>" : "")
+    + (un.length ? "<div class='small' style='margin-top:6px'>" + esc(t("notReleased")) + ":</div><ul class='commits'>" + un.slice(0, 8).map(function (c) { return "<li><code>" + esc(c.sha) + "</code> " + esc(c.subject) + " <span class='when'>" + esc(c.author + ", " + ago(c.ts)) + "</span></li>"; }).join("") + "</ul>"
+      : "<div class='small ok' style='margin-top:6px'>" + esc(t("allOut")) + "</div>") + "</div>";
+  var ad = D.addons || [], stg = D.staging || [];
+  h += "<div class='panel'><h3>" + esc(t("addons")) + "</h3><div class='scroll'><table><tr><th>" + esc(t("addon")) + "</th><th>" + esc(t("players")) + "</th><th>" + esc(t("inMain")) + "</th></tr>"
+    + ad.map(function (a) { return "<tr><td>" + esc(a.id) + "</td><td>" + esc(a.live || "—") + "</td><td>" + (a.outside ? "<span class='small'>" + esc(t("separate")) + "</span>" : a.pending ? "<b class='warn'>" + esc(a.main) + " · " + esc(t("waiting")) + "</b>" : "<span class='ok'>" + esc(t("same")) + "</span>") + "</td></tr>"; }).join("")
+    + "</table></div>" + (stg.length ? "<div class='small warn' style='margin-top:6px'>" + esc(t("staged")) + ": " + esc(stg.map(function (x) { return x.version; }).join(", ")) + "</div>" : "") + "</div>";
+  var w = D.web || {}, ww = w.waiting || [];
+  h += "<div class='panel'><h3>" + esc(t("web")) + "</h3><div class='kv'><span>" + esc(t("deployed")) + "</span><code>" + esc(w.deployed || "—") + "</code></div>"
+    + (ww.length ? "<div class='small warn' style='margin-top:6px'>" + esc(t("waitDeploy")) + ":</div><ul class='commits'>" + ww.slice(0, 6).map(function (c) { return "<li><code>" + esc(c.sha) + "</code> " + esc(c.subject) + "</li>"; }).join("") + "</ul>" : "<div class='small ok' style='margin-top:6px'>" + esc(t("allOut")) + "</div>")
+    + "<div class='small' style='margin-top:6px'>" + esc(t("autoDeploy")) + "</div></div>";
+  $("rel").innerHTML = h;
+  // repositories
+  var names = { launcher: "Dow2-elite-launcher", patches: "Dow2-patches", web: "dow2-ladder" };
+  $("repos").innerHTML = (D.repos || []).map(function (r) {
+    var m = r.main || {};
+    var br = (r.branches || []).map(function (b) {
+      var stx = b.ahead ? "<b class='warn'>" + esc(t("ahead", { n: b.ahead })) + "</b>" : "<span class='ok'>" + esc(t("merged")) + "</span>";
+      if (b.pr) stx += " · <a href='" + esc(b.pr.url) + "' target='_blank' rel='noopener'>PR #" + b.pr.n + "</a> " + esc(t(b.pr.merged ? "pr_merged" : "pr_" + b.pr.state));
+      return "<tr><td><code>" + esc(b.name) + "</code></td><td>" + esc(b.author || "") + "</td><td>" + esc(ago(b.ts)) + "</td><td>" + stx + "</td></tr>";
+    }).join("");
+    var prs = (r.pulls || []).slice(0, 6).map(function (p) { return "<li><a href='" + esc(p.url) + "' target='_blank' rel='noopener'>#" + p.n + "</a> " + esc(p.title) + " <span class='when'>" + esc(p.user + " · " + t(p.merged ? "pr_merged" : "pr_" + p.state) + " · " + ago(p.ts)) + "</span></li>"; }).join("");
+    return "<div class='repo'><h3><a href='" + esc(r.github) + "' target='_blank' rel='noopener'>" + esc(names[r.id] || r.id) + "</a></h3>"
+      + "<div class='small'>" + esc(t("mainHead")) + " <code>" + esc(m.sha || "") + "</code> " + esc(m.subject || "") + " <span class='when'>" + esc((m.author || "") + ", " + ago(m.ts)) + "</span></div>"
+      + (br ? "<div class='scroll'><table><tr><th>" + esc(t("branch")) + "</th><th>" + esc(t("author")) + "</th><th>" + esc(t("updated")) + "</th><th>" + esc(t("status")) + "</th></tr>" + br + "</table></div>" : "")
+      + (prs ? "<div class='small' style='margin-top:8px'>" + esc(t("prs")) + ":</div><ul class='commits'>" + prs + "</ul>" : "") + "</div>";
+  }).join("");
+  $("log").innerHTML = (D.log || []).map(function (e) { return "<li><time>" + esc(when(e.ts)) + "</time>" + esc(L(e)) + "</li>"; }).join("");
+  $("gen").textContent = when(D.generated) + " (" + ago(D.generated) + ")";
+}
+function applyLang(l) {
+  lang = I18N[l] ? l : "en"; document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach(function (e) { e.textContent = t(e.getAttribute("data-i")); });
+  document.querySelectorAll("#langs a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("data-l") === lang); });
+  render();
+}
+function pick() {
+  try { var s = localStorage.getItem("lang"); if (s && I18N[s]) return s; } catch (e) {}
+  var n = (navigator.languages || [navigator.language || "en"]);
+  for (var i = 0; i < n.length; i++) { var c = String(n[i]).slice(0, 2).toLowerCase(); if (I18N[c]) return c; }
+  return "en";
+}
+document.querySelectorAll("#langs a").forEach(function (a) { a.onclick = function () { var l = a.getAttribute("data-l"); try { localStorage.setItem("lang", l); } catch (e) {} applyLang(l); }; });
+function load() { fetch("dev/status.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) { if (d) { D = d; render(); } }).catch(function () {}); }
+applyLang(pick()); load(); setInterval(load, 60000); setInterval(render, 30000);
+</script>
+</body>
+</html>

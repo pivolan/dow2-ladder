@@ -65,7 +65,7 @@ if has replay/; then
 fi
 # ---- the site (nginx serves /var/www/rts-site/elite; the downloads in dl/ belong to the launcher CI)
 if has site/; then
-  rsync -a --exclude dl/ --chmod=D775,F664 site/ /var/www/rts-site/elite/
+  rsync -a --exclude dl/ --exclude dev/status.json --exclude stage/ --chmod=D775,F664 site/ /var/www/rts-site/elite/
   find /var/www/rts-site/elite -path '*/dl' -prune -o -print0 2>/dev/null | xargs -0 -r setfacl -m u:pivodev:rwX,u:openclaw:rwX,m::rwx 2>/dev/null
   done_parts="$done_parts сайт"
 fi

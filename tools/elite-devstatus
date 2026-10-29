@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+# elite-devstatus: the state of Elite development for the site's Development page (/elite/dev/), every 2 minutes
+# (elite-devstatus.timer) and after every `elite-dev` command. Writes /var/www/rts-site/elite/dev/status.json.
+#
+# The process (owner, 29.10.2026): the owner's requests are done first; what comes from the repositories is second -
+# after its pipeline it lands on the staging, gets checked, and is released to the players by hand, or reverted.
+# Hand-kept part (elite-dev): the queue, the current activity, the next release and why there is none yet, the log.
+# Read from the machines: branches and pull requests, what main has beyond the release, staging, released versions.
+import json, os, subprocess, time, urllib.request
+
+D = '/var/lib/elite-dev'
+OUT = '/var/www/rts-site/elite/dev/status.json'
+UPD = '/mnt/ssd/eliteupd'
+REPOS = [
+    {'id': 'launcher', 'gh': 'pivolan/Dow2-elite-launcher', 'dir': '/mnt/ssd/eliteupd/wip_gamerunning', 'key': '/root/.ssh/deploy_elite-launcher'},
+    {'id': 'patches', 'gh': 'pivolan/Dow2-patches', 'dir': '/mnt/ssd/dow2_re/patches_pr4', 'key': '/root/.ssh/deploy_dow2-fixes'},
+    {'id': 'web', 'gh': 'pivolan/dow2-ladder', 'dir': '/srv/dow2-web', 'key': '/root/.ssh/deploy_dow2-ladder'},
+]
+
+def load(name, default):
+    try: return json.load(open(os.path.join(D, name)))
+    except Exception: return default
+
+def git(r, *a):
+    env = dict(os.environ, GIT_SSH_COMMAND='ssh -i %s -o IdentitiesOnly=yes -o BatchMode=yes' % r['key'])
+    p = subprocess.run(['git', '-C', r['dir']] + list(a), capture_output=True, text=True, env=env, timeout=120)
+    return p.stdout.strip()
+
+def commit(r, ref):
+    out = git(r, 'log', '-1', '--format=%h%x09%an%x09%ct%x09%s', ref)
+    if not out: return None
+    h, a, t, s = (out.split('\t') + ['', '', '0', ''])[:4]
+    return {'sha': h, 'author': a, 'ts': int(t or 0), 'subject': s[:200]}
+
+def log_between(r, a, b, n=30):
+    out = git(r, 'log', '--no-merges', '-%d' % n, '--format=%h%x09%an%x09%ct%x09%s', '%s..%s' % (a, b))
+    res = []
+    for l in out.splitlines():
+        h, au, t, s = (l.split('\t') + ['', '', '0', ''])[:4]
+        res.append({'sha': h, 'author': au, 'ts': int(t or 0), 'subject': s[:200]})
+    return res
+
+PR_CACHE = os.path.join(D, 'prs.json')
+def pulls():
+    c = load('prs.json', {})
+    if time.time() - c.get('ts', 0) < 600: return c.get('repos', {})
+    repos = {}
+    for r in REPOS:
+        try:
+            req = urllib.request.Request('https://api.github.com/repos/%s/pulls?state=all&per_page=15' % r['gh'], headers={'User-Agent': 'elite-devstatus', 'Accept': 'application/vnd.github+json'})
+            items = json.load(urllib.request.urlopen(req, timeout=20))
+            repos[r['id']] = [{'n': p['number'], 'title': p['title'][:160], 'user': p['user']['login'], 'state': p['state'],
+                               'merged': bool(p.get('merged_at')), 'branch': p['head']['ref'], 'url': p['html_url'],
+                               'ts': p.get('merged_at') or p.get('closed_at') or p.get('updated_at')} for p in items]
+        except Exception:
+            repos[r['id']] = (c.get('repos') or {}).get(r['id'], [])
+    try: json.dump({'ts': time.time(), 'repos': repos}, open(PR_CACHE, 'w'))
+    except Exception: pass
+    return repos
+
+def repo_state(r, prs):
+    git(r, 'fetch', '-q', '--prune', 'origin')
+    main = commit(r, 'origin/main')
+    branches = []
+    for ref in git(r, 'for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin').splitlines():
+        b = ref.split('/', 1)[1] if '/' in ref else ref
+        if b in ('HEAD', 'main') or ref == 'origin': continue
+        # commits whose change is not in main yet (git cherry: the same change carried over by hand counts as merged)
+        ahead = sum(1 for l in git(r, 'cherry', 'origin/main', ref).splitlines() if l.startswith('+'))
+        behind = int(git(r, 'rev-list', '--count', ref + '..origin/main') or 0)
+        c = commit(r, ref) or {}
+        pr = next((p for p in prs if p['branch'] == b), None)
+        branches.append(dict(c, name=b, ahead=ahead, behind=behind, pr=pr and {'n': pr['n'], 'state': pr['state'], 'merged': pr['merged'], 'url': pr['url']}))
+    branches.sort(key=lambda x: -x.get('ts', 0))
+    return {'id': r['id'], 'github': 'https://github.com/' + r['gh'], 'main': main, 'branches': branches, 'pulls': prs[:10]}
+
+def live():
+    lj = json.load(open(UPD + '/store3/launcher.json'))
+    comps = {c['id']: c['version'] for c in lj['components']}
+    lu = (lj.get('launcher_update') or {}).get('version')
+    return lj, comps, lu
+
+def build():
+    prs = pulls()
+    repos = {}
+    for r in REPOS:
+        try: repos[r['id']] = repo_state(r, prs.get(r['id'], []))
+        except Exception as e: repos[r['id']] = {'id': r['id'], 'error': type(e).__name__}
+    lj, comps, lver = live()
+    # launcher: what main has beyond the released tag
+    L = REPOS[0]; tag = 'v' + (lver or '')
+    has_tag = bool(git(L, 'rev-parse', '-q', '--verify', 'refs/tags/' + tag))
+    main_ver = ''
+    try: main_ver = json.loads(git(L, 'show', 'origin/main:app/tauri.conf.json')).get('version', '')
+    except Exception: pass
+    staged = sorted(os.listdir('/var/www/rts-site/elite/stage')) if os.path.isdir('/var/www/rts-site/elite/stage') else []
+    launcher = {'released': lver, 'main_version': main_ver, 'staged': [v for v in staged if v != lver],
+                'unreleased': log_between(L, tag, 'origin/main') if has_tag else []}
+    # add-ons: main's addons.json against what the players have; the staging store (dow2-patches-deploy)
+    P = REPOS[1]; want = {}
+    try: want = {k: v.get('version') for k, v in json.loads(git(P, 'show', 'origin/main:addons.json')).items() if not k.startswith('_')}
+    except Exception: pass
+    addons = []
+    for k, v in sorted(want.items()):
+        cur = comps.get(k, '')
+        addons.append({'id': k, 'main': '%s-%s' % (k, v) if v else '', 'live': cur, 'pending': bool(v) and cur != '%s-%s' % (k, v)})
+    for k, v in sorted(comps.items()):
+        if k not in want: addons.append({'id': k, 'main': None, 'live': v, 'pending': False, 'outside': True})
+    stage = []
+    try:
+        sj = json.load(open(UPD + '/store3-staging/launcher.json'))
+        for c in sj['components']:
+            m = UPD + '/store3-staging/' + c['version'] + '.manifest'
+            # only what the staging deploy built itself (its own manifest; the live ones are links into store3)
+            if comps.get(c['id']) != c['version'] and os.path.isfile(m) and not os.path.islink(m):
+                stage.append({'id': c['id'], 'version': c['version'], 'live': comps.get(c['id'])})
+    except Exception: pass
+    # site and ladder: deployed by their own timer when the automatch queue is empty
+    W = REPOS[2]
+    dep = ''
+    try: dep = open('/srv/dow2-web-deploy/.deployed').read().strip()[:7]
+    except Exception: pass
+    web = {'deployed': dep, 'main': (repos.get('web', {}).get('main') or {}).get('sha', ''),
+           'waiting': log_between(W, dep, 'origin/main') if dep else []}
+    st = load('state.json', {'state': 'idle'})
+    st.setdefault('state', 'idle')
+    try:
+        import fcntl
+        f = open('/run/elite-store.lock', 'a')
+        try: fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB); fcntl.flock(f, fcntl.LOCK_UN)
+        except OSError: st = dict(st, store_busy=True)
+    except Exception: pass
+    return {'generated': int(time.time()), 'state': st, 'next': load('next.json', {}), 'queue': load('queue.json', []),
+            'log': load('log.json', [])[-40:][::-1], 'launcher': launcher, 'addons': addons, 'staging': stage, 'web': web,
+            'repos': list(repos.values())}
+
+if __name__ == '__main__':
+    s = build()
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    tmp = OUT + '.tmp'
+    json.dump(s, open(tmp, 'w'), ensure_ascii=False, separators=(',', ':')); os.chmod(tmp, 0o644); os.replace(tmp, OUT)

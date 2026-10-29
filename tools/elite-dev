@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""elite-dev: the hand-kept part of the site's Development page (/elite/dev/); the rest is read by elite-devstatus.
+
+  elite-dev state idle|working|building|checking|releasing ["what (ru)"] ["what (en)"]
+  elite-dev log "event (ru)" ["event (en)"]
+  elite-dev task add ID owner|repo STATUS "title (ru)" ["title (en)"] [--target "launcher 1.3.1"] [--ref "PR #8"]
+  elite-dev task set ID STATUS ["note (ru)"] ["note (en)"]          STATUS: queued in_progress checking staged released rejected later
+  elite-dev task rm ID
+  elite-dev next "what (ru)" "what (en)" "when" "why there is none yet (ru)" "(en)"      (empty strings = nothing)
+  elite-dev show
+Every change is logged and the page data is rebuilt at once."""
+import json, os, subprocess, sys, time
+
+D = '/var/lib/elite-dev'
+STATUSES = ('queued', 'in_progress', 'checking', 'staged', 'released', 'rejected', 'later')
+STATES = ('idle', 'working', 'building', 'checking', 'releasing')
+
+def load(n, d):
+    try: return json.load(open(os.path.join(D, n)))
+    except Exception: return d
+def save(n, v):
+    os.makedirs(D, exist_ok=True); p = os.path.join(D, n)
+    json.dump(v, open(p + '.tmp', 'w'), ensure_ascii=False, indent=1); os.replace(p + '.tmp', p)
+def log(ru, en=''):
+    l = load('log.json', []); l.append({'ts': int(time.time()), 'ru': ru, 'en': en or ru}); save('log.json', l[-300:])
+
+def main(a):
+    if not a or a[0] in ('-h', '--help'): print(__doc__); return 0
+    cmd = a[0]
+    if cmd == 'state':
+        if len(a) < 2 or a[1] not in STATES: sys.exit('state: ' + ' '.join(STATES))
+        prev = load('state.json', {}).get('state')
+        st = {'state': a[1], 'ru': a[2] if len(a) > 2 else '', 'en': a[3] if len(a) > 3 else (a[2] if len(a) > 2 else ''), 'since': int(time.time())}
+        save('state.json', st)
+        if a[1] != prev or st['ru']: log(('Сейчас: ' + st['ru']) if st['ru'] else 'Работа закончена', ('Now: ' + st['en']) if st['en'] else 'Work done')
+    elif cmd == 'log':
+        log(a[1], a[2] if len(a) > 2 else '')
+    elif cmd == 'task':
+        q = load('queue.json', []); sub = a[1]
+        opts = {}
+        rest = []
+        i = 2
+        while i < len(a):
+            if a[i] in ('--target', '--ref') and i + 1 < len(a): opts[a[i][2:]] = a[i + 1]; i += 2
+            else: rest.append(a[i]); i += 1
+        if sub == 'add':
+            tid, src, status, ru = rest[0], rest[1], rest[2], rest[3]
+            en = rest[4] if len(rest) > 4 else ru
+            if src not in ('owner', 'repo') or status not in STATUSES: sys.exit('source owner|repo, status ' + ' '.join(STATUSES))
+            q = [t for t in q if t['id'] != tid]
+            q.append({'id': tid, 'source': src, 'status': status, 'ru': ru, 'en': en, 'target': opts.get('target', ''),
+                      'ref': opts.get('ref', ''), 'added': int(time.time()), 'updated': int(time.time()), 'note_ru': '', 'note_en': ''})
+            log('В очереди: ' + ru, 'Queued: ' + en)
+        elif sub == 'set':
+            tid, status = rest[0], rest[1]
+            if status not in STATUSES: sys.exit('status ' + ' '.join(STATUSES))
+            t = next((t for t in q if t['id'] == tid), None)
+            if not t: sys.exit('no task ' + tid)
+            t['status'] = status; t['updated'] = int(time.time())
+            if len(rest) > 2: t['note_ru'] = rest[2]; t['note_en'] = rest[3] if len(rest) > 3 else rest[2]
+            if 'target' in opts: t['target'] = opts['target']
+            if 'ref' in opts: t['ref'] = opts['ref']
+            words = {'queued': ('в очереди', 'queued'), 'in_progress': ('в работе', 'in progress'), 'checking': ('на проверке', 'being checked'),
+                     'staged': ('на стейджинге', 'staged'), 'released': ('выпущено', 'released'), 'rejected': ('отклонено', 'rejected'), 'later': ('отложено', 'later')}[status]
+            log('%s — %s%s' % (t['ru'], words[0], (': ' + t['note_ru']) if t['note_ru'] and len(rest) > 2 else ''),
+                '%s — %s%s' % (t['en'], words[1], (': ' + t['note_en']) if t['note_en'] and len(rest) > 2 else ''))
+        elif sub == 'rm':
+            q = [t for t in q if t['id'] != rest[0]]
+        else: sys.exit(__doc__)
+        save('queue.json', q)
+    elif cmd == 'next':
+        v = dict(zip(('ru', 'en', 'when', 'why_ru', 'why_en'), (a[1:] + [''] * 5)[:5])); v['updated'] = int(time.time())
+        save('next.json', v)
+    elif cmd == 'show':
+        for n in ('state.json', 'next.json', 'queue.json'): print(n, json.dumps(load(n, None), ensure_ascii=False, indent=1))
+        return 0
+    else: print(__doc__); return 1
+    subprocess.run(['/usr/local/bin/elite-devstatus'], timeout=300)
+    return 0
+
+if __name__ == '__main__': sys.exit(main(sys.argv[1:]))
