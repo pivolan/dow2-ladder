@@ -79,6 +79,10 @@ section { padding: 70px 0; border-bottom: 1px solid var(--line); }
 h2 { font: 700 clamp(26px, 4vw, 38px) Cinzel, CinzelCyr, serif; color: var(--gold); text-align: center; margin: 0 0 12px; letter-spacing: .05em; }
 .sub { text-align: center; color: var(--muted); max-width: 720px; margin: 0 auto 40px; }
 .shot { display: block; max-width: 100%; margin: 0 auto; border: 1px solid #5a4a2e; border-radius: 4px; box-shadow: 0 30px 80px #000c, 0 0 0 6px #0008; }
+.shot { cursor: zoom-in; }
+.zoom { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px;
+        background: #000d; cursor: zoom-out; }
+.zoom img { max-width: 100%; max-height: 100%; border: 1px solid #5a4a2e; border-radius: 4px; box-shadow: 0 30px 80px #000; }
 .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
 .shots figure:first-child { grid-column: 1 / -1; }
 .shots figure { margin: 0; }
@@ -354,6 +358,24 @@ var I18N = {"ru": {"live_ingame": "Сейчас в DoW II:", "live_launcher": "�
   load(); setInterval(load, 20000);
   var lv = document.getElementById('live');
   lv.addEventListener('touchstart', function (e) { if (!lv.classList.contains('open')) { e.preventDefault(); lv.classList.add('open'); } }, {passive: false});
+})();
+</script>
+<script>
+// screenshots open full size: click (or Enter) on a picture, click anywhere or Esc closes it
+(function () {
+  let box = null;
+  const close = () => { if (box) { box.remove(); box = null; document.body.style.overflow = ''; } };
+  const open = img => {
+    close(); box = document.createElement('div'); box.className = 'zoom';
+    const big = document.createElement('img'); big.src = img.currentSrc || img.src; big.alt = img.alt;
+    box.appendChild(big); box.onclick = close; document.body.appendChild(box); document.body.style.overflow = 'hidden';
+  };
+  document.querySelectorAll('img.shot').forEach(img => {
+    img.tabIndex = 0; img.title = img.alt;
+    img.addEventListener('click', () => open(img));
+    img.addEventListener('keydown', e => { if (e.key === 'Enter') open(img); });
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 })();
 </script>
 </body>
