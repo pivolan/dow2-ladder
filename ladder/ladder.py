@@ -514,6 +514,19 @@ def _assign_watchers():  # под MM_LOCK: зрителей — в собира�
                 m['players'][w['steam']] = {'name': w.get('name') or 'Player', 'watcher': True}
                 break
 
+def _best_relay(steams):
+    # Relay 9: every player pinged our game servers (relay_ping {ip: ms}, -1 = no answer). The best server for the match is
+    # the one with the lowest worst ping among everyone (then the lowest sum). None = someone has no ping data (older add-on):
+    # the add-on then takes the first server that answers, as before. '' = no server answers everyone: play on Relic.
+    pings = [(MM.get(s) or {}).get('ping') or {} for s in steams]
+    if not pings or not all(pings): return None
+    best = None
+    for h in set.intersection(*(set(x) for x in pings)):
+        v = [x[h] for x in pings]
+        if min(v) < 0: continue
+        if best is None or (max(v), sum(v)) < best[0]: best = ((max(v), sum(v)), h)
+    return best[1] if best else ''
+
 def _player_view(p):  # под MM_LOCK: что вернуть игроку в poll
     if p['mode'] == WATCH and p['state'] == 'searching':
         _assign_watchers()
@@ -538,19 +551,35 @@ def _player_view(p):  # под MM_LOCK: что вернуть игроку в po
     roster = [{'steam': s_, 'slot': sl, 'pid': (MM.get(s_) or {}).get('pid') or 0, 'name': m['players'].get(s_, {}).get('name')} for s_, sl in m.get('slots', {}).items()]
     wpids = [(MM.get(w) or {}).get('pid') or 0 for w in m.get('watchers', [])]
     # everyone (players and watchers) has our game server (Relay 8): only then the match plays on it, else on Relic
-    own_all = all((MM.get(s_) or {}).get('own') for s_ in list(m.get('slots', {})) + list(m.get('watchers', [])))
+    everyone = list(m.get('slots', {})) + list(m.get('watchers', []))
+    own_all = all((MM.get(s_) or {}).get('own') for s_ in everyone)
+    if own_all and 'relay' not in m and m.get('slots'):   # picked once per match: the host's lobby opens there first
+        m['relay'] = _best_relay(everyone)
+        print('mm: match %s relay %r (pings %s)' % (m['id'], m['relay'], [(MM.get(s_) or {}).get('ping') for s_ in everyone]), flush=True)
+    relay = m.get('relay') if own_all else None
+    if relay == '': own_all = False                       # none of our servers reaches everyone: Relic
+    extra = {'relay_host': relay} if relay else {}
     wnames = [m['players'].get(w, {}).get('name') for w in m.get('watchers', [])]
     if p['role'] == 'watcher':
         return {'state': 'matched', 'match': m['id'], 'mode': m['mode'], 'role': 'watcher', 'host_steam': m['host_steam'],
-                'lobby': m['lobby'], 'map': m.get('map'), 'roster': roster, 'watchers': m['watchers'], 'watcher_pids': wpids, 'watcher_names': wnames, 'allies': [], 'enemies': [], 'own_server': own_all}
+                'lobby': m['lobby'], 'map': m.get('map'), 'roster': roster, 'watchers': m['watchers'], 'watcher_pids': wpids, 'watcher_names': wnames, 'allies': [], 'enemies': [], 'own_server': own_all, **extra}
     return {'state': 'matched', 'match': m['id'], 'mode': m['mode'], 'role': p['role'], 'slot': m.get('slots', {}).get(p['steam']),
             'roster': roster, 'watchers': m.get('watchers', []), 'watcher_pids': wpids, 'watcher_names': wnames, 'bots': bool(m.get('bots')),
             'host_steam': m['host_steam'], 'lobby': m['lobby'], 'map': m.get('map'), 'own_server': own_all,
-            'allies': side([s for s in mine if s != p['steam']]), 'enemies': side(theirs)}
+            'allies': side([s for s in mine if s != p['steam']]), 'enemies': side(theirs), **extra}
 
 def _clean(v, n=48):
     v = str(v or '').strip()
     return ''.join(ch for ch in v if ch.isprintable())[:n] or None
+
+def _relay_ping(v):  # {ip: ms} from Relay 9 via MMFind: IPv4 keys, -1..5000
+    out = {}
+    if isinstance(v, dict):
+        for k, x in list(v.items())[:8]:
+            try: x = int(x)
+            except Exception: continue
+            if re.fullmatch(r'\d{1,3}(\.\d{1,3}){3}', str(k)): out[str(k)] = max(-1, min(5000, x))
+    return out or None
 
 def mm_join(steam, mode, d=None):
     d = d or {}
@@ -575,7 +604,7 @@ def mm_join(steam, mode, d=None):
                      'pid': pid, 'name': name or _clean(d.get('name')), 'state': 'searching', 'match': None, 'role': None,
                      'rsrc': rsrc, 'race': _clean(d.get('race'), 32), 'hero': _clean(d.get('hero'), 32), 'maps': maps, 'max_diff': max_diff,
                      'ts': now, 'seen': now, 'pool': '%s|%s' % (_clean(d.get('group'), 24) or '', 'own' if d.get('own_server') and not d.get('relay_compat') else ''),
-                     'own': bool(d.get('own_server'))}
+                     'own': bool(d.get('own_server')), 'ping': _relay_ping(d.get('relay_ping')) if d.get('own_server') else None}
         if mode == WATCH: _assign_watchers()
         elif d.get('bots'):   # тест: матч сразу против компьютеров, хост заполнит пустые слоты ИИ
             MM_SEQ[0] += 1; mid = 'm%d' % MM_SEQ[0]; p = MM[steam]
