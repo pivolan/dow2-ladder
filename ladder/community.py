@@ -13,7 +13,7 @@
 #      claim, so the account is bound to the first computer (device = hash of the machine id) that signs in with it; another
 #      computer needs one sign-in through the browser (token of that session) to be bound too.
 # Every step is written to the journal (journalctl -u dow2-ladder | grep community).
-# POST me      {token}       -> the signed-in profile (name, avatar, rating)
+# POST me      {token}       -> the signed-in profile (name, avatar, rating, stats: 1v1 games / wins / losses / rank this season)
 # POST hello   {token?, state, uid?}  every ~30 s from the launcher: "I'm here" -> {online: [...]}
 # GET  online                -> who has the launcher open (signed in, seen in the last 90 s)
 # GET  msgs?room=&after=     -> {msgs: [...]} (the last 100, or the ones after id)
@@ -30,6 +30,7 @@ ONLINE_SECS = 90
 RATING = None                                       # ladder.py: steam -> rating (1v1) or None
 MM_STATE = None                                     # ladder.py: steam -> 'search' | 'match' | None
 ADMIN_OK = None                                     # ladder.py: admin token -> bool
+STATS = None                                        # ladder.py: steam -> 1v1 stats of the season for the profile
 ALIAS = None                                        # ladder.py: steam -> the name the ladder / Relic knows (a Steam profile without a name)
 LOCK = threading.Lock()
 PRESENCE = {}                                       # steam -> {'seen', 'state'}  (in memory: who is here now)
@@ -204,7 +205,9 @@ def say(d):
 def me(d):
     steam = _session(d.get('token'))
     if not steam: return {'ok': False, 'signed_in': False}
-    return dict(_user(steam), ok=True, signed_in=True, rating=_rating(steam))
+    try: stats = STATS and STATS(steam)
+    except Exception: stats = None
+    return dict(_user(steam), ok=True, signed_in=True, rating=_rating(steam), stats=stats)
 
 def logout(d):
     with db() as c: c.execute('DELETE FROM sess WHERE token=?', (str(d.get('token', ''))[:80],))
