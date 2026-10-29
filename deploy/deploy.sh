@@ -40,7 +40,7 @@ except Exception: print(0)')
   age=$(( $(date +%s) - $(cat .pending_since) ))
   if [ "${busy:-0}" -gt 0 ] && [ $age -lt 600 ]; then pending="$pending
 ladder/"; else
-    install -o root -g root -m 644 ladder/ladder.py ladder/ladder.html ladder/fb_admin.html ladder/capture.py ladder/maps.txt /srv/ladder/app/
+    install -o root -g root -m 644 ladder/ladder.py ladder/community.py ladder/ladder.html ladder/fb_admin.html ladder/capture.py ladder/maps.txt /srv/ladder/app/
     install -o root -g root -m 644 ladder/guess_from_replays.py /srv/ladder/
     systemctl restart dow2-ladder && done_parts="$done_parts ладдер"
   fi

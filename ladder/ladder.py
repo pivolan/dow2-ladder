@@ -977,6 +977,7 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urllib.parse.urlparse(self.path); qs = urllib.parse.parse_qs(u.query)
         try:
+            if u.path.startswith('/ladder/api/c/'): return community.handle(self, 'GET', u, None)
             if u.path in ('/ladder', '/ladder/', '/ladder/index.html'):
                 try:
                     with open(os.path.dirname(os.path.abspath(__file__)) + '/ladder.html', 'rb') as f:
@@ -1022,6 +1023,7 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
         try:
+            if u.path.startswith('/ladder/api/c/'): return community.handle(self, 'POST', u, self._body())
             if u.path in ('/ladder/api/fb/send', '/ladder/api/fb/reply'):
                 n = int(self.headers.get('Content-Length') or 0)
                 if n <= 0 or n > 24 << 20: return self.send(413, {'error': 'size'}, cache=0)
@@ -1045,6 +1047,21 @@ class H(BaseHTTPRequestHandler):
             return self.send(404, {'error': 'not found'}, cache=0)
         except Exception as e:
             return self.send(500, {'error': type(e).__name__}, cache=0)
+
+import community                                    # launcher community: Steam sign-in, who is online, the players' chat
+community.ADMIN_OK = _fb_token_ok
+def _c_rating(steam):
+    i = _rating_info(steam, '1v1')
+    return round(i[1]) if i[5] != 'new' else None
+community.RATING = _c_rating
+community.ALIAS = lambda steam: _rating_info(steam, '1v1')[4]
+def _c_mm_state(steam):
+    with MM_LOCK:
+        p = MM.get(steam)
+        if p: return 'search' if p['state'] == 'searching' else 'match'
+        if any(steam in m['host'] + m['guest'] for m in MM_PLAYING.values()): return 'match'
+    return None
+community.MM_STATE = _c_mm_state
 
 if __name__ == '__main__':
     threading.Thread(target=crawler, daemon=True).start()
