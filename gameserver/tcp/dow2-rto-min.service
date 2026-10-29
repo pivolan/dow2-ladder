@@ -1,0 +1,5 @@
+[Unit]
+Description=DoW2 game server: 40 ms minimum TCP retransmission timeout on the default route
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dow2-rto-min

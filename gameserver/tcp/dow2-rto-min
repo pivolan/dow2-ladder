@@ -1,0 +1,8 @@
+#!/bin/bash
+# dow2-rto-min: a lost packet of a game connection is sent again after 40 ms instead of the 200 ms Linux minimum
+# (DoW2 turns go over TCP: every retransmission is a short lag for the whole match). Set on the default route; DHCP can
+# renew the route without it, so a timer puts it back. Undo: ip route change <the route without rto_min>
+R="$(ip -4 route show default | head -1)"
+[ -n "$R" ] || exit 0
+echo "$R" | grep -q "rto_min" && exit 0
+ip route change $R rto_min 40ms && logger -t dow2-rto-min "rto_min 40ms on: $R"

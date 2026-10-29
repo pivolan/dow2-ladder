@@ -1,0 +1,7 @@
+[Unit]
+Description=Put the 40 ms TCP retransmission minimum back (DHCP renews the route)
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target
