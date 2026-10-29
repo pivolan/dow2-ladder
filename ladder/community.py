@@ -24,7 +24,7 @@ import html, json, os, re, secrets, sqlite3, threading, time, urllib.parse, urll
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = ROOT + '/data/community.sqlite'
-BASE = 'https://rts.fintebtc.de'                    # where Steam sends the player back (OpenID realm)
+BASE = 'https://dow2.fintebtc.de'                    # where Steam sends the player back (OpenID realm)
 ROOMS = ('all', 'ru', 'en')
 ONLINE_SECS = 90
 RATING = None                                       # ladder.py: steam -> rating (1v1) or None
