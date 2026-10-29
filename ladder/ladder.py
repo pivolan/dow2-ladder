@@ -1054,6 +1054,16 @@ def _c_rating(steam):
     i = _rating_info(steam, '1v1')
     return round(i[1]) if i[5] != 'new' else None
 community.RATING = _c_rating
+def _c_stats(steam):
+    # the launcher's profile: 1v1 of the current season - games, wins, losses and the place on the ladder page (5+ games)
+    season = current_season()
+    with db() as c:
+        r = c.execute('''SELECT r.games, r.wins, r.losses FROM ratings r JOIN profiles p ON p.profile_id=r.profile_id
+                         WHERE p.steam=? AND r.mode='1v1' AND r.season=? ORDER BY r.games DESC LIMIT 1''', (str(steam), season)).fetchone()
+    if not r: return {'season': season, 'games': 0, 'wins': 0, 'losses': 0, 'rank': None}
+    rank = next((b['rank'] for b in board(season, '1v1', limit=100000) if b['steam'] == str(steam)), None)
+    return {'season': season, 'games': r[0], 'wins': r[1], 'losses': r[2], 'rank': rank}
+community.STATS = _c_stats
 community.ALIAS = lambda steam: _rating_info(steam, '1v1')[4]
 def _c_mm_state(steam):
     with MM_LOCK:

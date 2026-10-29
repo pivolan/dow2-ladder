@@ -8,7 +8,7 @@
 #
 # GET  login?nonce=          -> redirect to Steam            GET  return?...      <- Steam comes back here
 # GET  claim?nonce=          -> {token, steam, name, avatar} (once, 10 minutes)
-# POST me      {token}       -> the signed-in profile (name, avatar, rating)
+# POST me      {token}       -> the signed-in profile (name, avatar, rating, stats: 1v1 games / wins / losses / rank this season)
 # POST hello   {token?, state, uid?}  every ~30 s from the launcher: "I'm here" -> {online: [...]}
 # GET  online                -> who has the launcher open (signed in, seen in the last 90 s)
 # GET  msgs?room=&after=     -> {msgs: [...]} (the last 100, or the ones after id)
@@ -174,7 +174,9 @@ def say(d):
 def me(d):
     steam = _session(d.get('token'))
     if not steam: return {'ok': False, 'signed_in': False}
-    return dict(_user(steam), ok=True, signed_in=True, rating=_rating(steam))
+    try: stats = STATS and STATS(steam)
+    except Exception: stats = None
+    return dict(_user(steam), ok=True, signed_in=True, rating=_rating(steam), stats=stats)
 
 def logout(d):
     with db() as c: c.execute('DELETE FROM sess WHERE token=?', (str(d.get('token', ''))[:80],))
