@@ -445,6 +445,8 @@ def _group_ok(grp):  # ограничения: карты пересекаютс
     c = _common_maps(grp)
     return c is None or bool(c)
 
+MM_OWN_OFF = ROOT + '/data/mm_own_server_off'   # file exists = automatch never uses our game servers (29.10: a match where one player
+                                              # reached Moscow and the other did not never connected)
 MM_BLOCK_FILE = ROOT + '/data/mm_block.txt'   # steamID на строку (# — комментарий): в подбор не попадают (напр. вечно крашится)
 def _blocked():
     try: return {l.split('#')[0].strip() for l in open(MM_BLOCK_FILE) if l.split('#')[0].strip()}
@@ -553,6 +555,7 @@ def _player_view(p):  # под MM_LOCK: что вернуть игроку в po
     # everyone (players and watchers) has our game server (Relay 8): only then the match plays on it, else on Relic
     everyone = list(m.get('slots', {})) + list(m.get('watchers', []))
     own_all = all((MM.get(s_) or {}).get('own') for s_ in everyone)
+    if os.path.exists(MM_OWN_OFF): own_all = False               # switch: automatch on Relic servers only, our servers unused
     if own_all and 'relay' not in m and m.get('slots'):   # picked once per match: the host's lobby opens there first
         m['relay'] = _best_relay(everyone)
         print('mm: match %s relay %r (pings %s)' % (m['id'], m['relay'], [(MM.get(s_) or {}).get('ping') for s_ in everyone]), flush=True)
