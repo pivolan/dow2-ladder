@@ -700,6 +700,8 @@ def mm_ruined(steam, lobby):
     with db() as c:
         row = c.execute('SELECT players, started FROM mm_history WHERE lobby = ?', (lobby,)).fetchone()
     if not row or steam not in [p.get('steam') for p in json.loads(row[0])]: return {'ok': False}   # только свои матчи ладдера
+    if any(p.get('race') == 'random' for p in json.loads(row[0])):   # MMFind 0.25 picked the lobby Random: the match broke on loading
+        return {'ok': True, 'counted': False}                         # because of the add-on, not the player - no penalty
     with _db_lock, db() as c:
         c.execute('INSERT OR IGNORE INTO mm_ruin VALUES (?,?,?,?)', (steam, lobby, int(time.time()), season_of(row[1])))
     return {'ok': True}
