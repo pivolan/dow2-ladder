@@ -40,9 +40,15 @@ except Exception: print(0)')
   age=$(( $(date +%s) - $(cat .pending_since) ))
   if [ "${busy:-0}" -gt 0 ] && [ $age -lt 600 ]; then pending="$pending
 ladder/"; else
-    install -o root -g root -m 644 ladder/ladder.py ladder/community.py ladder/ladder.html ladder/fb_admin.html ladder/capture.py ladder/maps.txt /srv/ladder/app/
-    install -o root -g root -m 644 ladder/guess_from_replays.py /srv/ladder/
-    systemctl restart dow2-ladder && done_parts="$done_parts ладдер"
+    # every module of the service (a new one must not be forgotten: 29.10 ladder.py imported community.py that was not
+    # installed - the ladder was down 6 minutes); the previous files are kept and put back if the new ones do not answer
+    B=/srv/ladder/app.prev; rm -rf $B; cp -a /srv/ladder/app $B
+    install -o root -g root -m 644 ladder/*.py ladder/ladder.html ladder/fb_admin.html ladder/maps.txt /srv/ladder/app/
+    rm -f /srv/ladder/app/guess_from_replays.py; install -o root -g root -m 644 ladder/guess_from_replays.py /srv/ladder/
+    systemctl restart dow2-ladder; ok=""
+    for i in 1 2 3 4 5 6 7 8 9 10; do sleep 2; curl -sf -m 5 http://127.0.0.1:8217/ladder/api/mm/status >/dev/null && { ok=1; break; }; done
+    if [ -n "$ok" ]; then done_parts="$done_parts ладдер"
+    else cp -a $B/. /srv/ladder/app/; systemctl restart dow2-ladder; say "⛔ dow2-web: ладдер не поднялся на новых файлах - вернул прежние ($(journalctl -u dow2-ladder -n 3 --no-pager | tail -1 | cut -c1-200))"; fi
   fi
 fi
 # ---- player statistics (service relicstats)
