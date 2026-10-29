@@ -70,6 +70,9 @@ select { font: 600 14px Spectral, serif; color: var(--text); background: var(--p
 .dl:hover { filter: brightness(1.08); }
 /* live: who is searching, matches */
 .live { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 4px 0 24px; }
+.dbg-tgl { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gold-2); opacity: .7; cursor: pointer; margin: 2px 0 6px; user-select: none; }
+.dbg-tgl input { accent-color: var(--gold); margin: 0; }
+.dbgx { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.5; color: var(--gold-2); opacity: .85; margin-top: 3px; word-break: break-word; }
 .box { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; min-width: 0; }
 .box h2 { margin: 0; padding: 10px 14px; font: 700 13px Cinzel, CinzelCyr, serif; letter-spacing: .12em; text-transform: uppercase;
   color: var(--muted); border-bottom: 1px solid var(--line); background: #110e0b; display: flex; justify-content: space-between; }
@@ -142,6 +145,7 @@ select { font: 600 14px Spectral, serif; color: var(--text); background: var(--p
     <div class="stat play"><b id="s-playing">—</b><span data-t="playing">играют</span></div>
   </div>
 
+  <label class="dbg-tgl"><input type="checkbox" id="dbg"> <span data-t="dbgLabel">Детали (отладка)</span></label>
   <div class="live">
     <div class="box"><h2><span data-t="searching">Сейчас ищут</span> <em id="l-n">0</em></h2><div id="l-search"><div class="empty" data-t="loading">Загрузка…</div></div></div>
     <div class="box"><h2><span data-t="matches">Матчи</span> <em id="l-m">0</em></h2><div id="l-matches"><div class="empty" data-t="loading">Загрузка…</div></div></div>
@@ -206,25 +210,25 @@ const I18N = {
   ru: { online: 'онлайн', queue: 'в очереди', playing: 'играют', cta: 'Встать в очередь', searching: 'Сейчас ищут', matches: 'Матчи',
         loading: 'Загрузка…', player: 'Игрок', rating: 'Рейтинг', games: 'Игр', maps: 'карт', anyMap: 'любая карта', anyOpp: 'любой соперник',
         ratingDiff: 'рейтинга', waits: 'ждёт', nobody: 'Никто не ищет. Нажмите «Find a Game» в игре.', noMatches: 'Сейчас матчей нет.',
-        hostMap: 'карта на выбор хоста', sec: 'с', min: 'мин', noPlayers: 'Пока нет игроков с 5+ матчами в этом режиме.', error: 'Ошибка загрузки.',
+        hostMap: 'карта на выбор хоста', sec: 'с', min: 'мин', agoNow: 'только что', agoMin: 'мин назад', agoHour: 'ч назад', agoDay: 'дн назад', noPlayers: 'Пока нет игроков с 5+ матчами в этом режиме.', error: 'Ошибка загрузки.',
         note: (n, s) => `${n} игроков · сезон ${s} · рейтинг Glicko-2, минимум 5 матчей`, season: 'сезон',
         st: { creating: 'создаётся', lobby: 'в лобби', playing: 'идёт' },
         race: { space_marines: 'Космодесант', chaos_space_marines: 'Хаос', eldar: 'Эльдар', imperial_guard: 'Имп. гвардия', ordo_malleus: 'Ордо Маллеус', orks: 'Орки', tau: 'Тау', tyranids: 'Тираниды', necron: 'Некроны' },
         newbie: 'новичок', newT: 'Ещё нет рейтинга: нет игр в ладдере и в Relic', relicT: 'Рейтинг Relic: в ладдере этого сезона в этом режиме игр ещё нет',
         desc: 'Рейтинговая таблица Dawn of War II: Retribution (Elite). Glicko-2, сезоны, 1v1/2v2/3v3.',
-        hist: 'История матчей ладдера', hq: 'Ник, карта или лобби', allModes: 'Все режимы', allRaces: 'Все расы', allMaps: 'Все карты', more: 'Показать ещё',
+        hist: 'История матчей ладдера', hq: 'Ник, карта или лобби', allModes: 'Все режимы', allRaces: 'Все расы', allMaps: 'Все карты', more: 'Показать ещё', dbgLabel: 'Детали (отладка)',
         dlLauncher: 'Скачать лаунчер', replay: 'Реплей', conf: { 'высокая':'высокая','средняя':'средняя','низкая':'низкая' }, mmrAfter: 'MMR после матча', estResult: 'по реплею', estHint: 'Предположительный итог по реплею (парсер, пока Relic не отдал результат); обновится точным.', noReplay: 'реплея нет', won: 'победа', hNone: 'Матчей с такими условиями нет.', hRes: { finished: '', playing: 'идёт', unknown: 'итог неизвестен' },
         watchers: 'зрители' },
   en: { online: 'online', queue: 'in queue', playing: 'playing', cta: 'Join the queue', searching: 'Searching now', matches: 'Matches',
         loading: 'Loading…', player: 'Player', rating: 'Rating', games: 'Games', maps: 'maps', anyMap: 'any map', anyOpp: 'any opponent',
         ratingDiff: 'rating', waits: 'waiting', nobody: 'Nobody is searching. Press “Find a Game” in the game.', noMatches: 'No matches right now.',
-        hostMap: 'map picked by the host', sec: 's', min: 'min', noPlayers: 'No players with 5+ games in this mode yet.', error: 'Loading error.',
+        hostMap: 'map picked by the host', sec: 's', min: 'min', agoNow: 'just now', agoMin: 'min ago', agoHour: 'h ago', agoDay: 'd ago', noPlayers: 'No players with 5+ games in this mode yet.', error: 'Loading error.',
         note: (n, s) => `${n} players · season ${s} · Glicko-2 rating, at least 5 games`, season: 'season',
         st: { creating: 'being created', lobby: 'in lobby', playing: 'in progress' },
         race: { space_marines: 'Space Marines', chaos_space_marines: 'Chaos', eldar: 'Eldar', imperial_guard: 'Imperial Guard', ordo_malleus: 'Ordo Malleus', orks: 'Orks', tau: 'Tau', tyranids: 'Tyranids', necron: 'Necrons' },
         newbie: 'new', newT: 'No rating yet: no ladder or Relic games', relicT: 'Relic rating: no ladder games this season in this mode yet',
         desc: 'Dawn of War II: Retribution (Elite) ladder. Glicko-2 rating, seasons, 1v1/2v2/3v3.',
-        hist: 'Ladder match history', hq: 'Player, map or lobby', allModes: 'All modes', allRaces: 'All races', allMaps: 'All maps', more: 'Show more',
+        hist: 'Ladder match history', hq: 'Player, map or lobby', allModes: 'All modes', allRaces: 'All races', allMaps: 'All maps', more: 'Show more', dbgLabel: 'Details (debug)',
         dlLauncher: 'Download launcher', replay: 'Replay', conf: { 'высокая':'high','средняя':'medium','низкая':'low' }, mmrAfter: 'MMR after the match', estResult: 'by replay', estHint: 'Estimated outcome from the replay (parser, until Relic reports); will be replaced by the exact result.', noReplay: 'no replay', won: 'won', hNone: 'No matches for these filters.', hRes: { finished: '', playing: 'in progress', unknown: 'result unknown' },
         watchers: 'observers' } };
 let LANG = (() => {
@@ -254,21 +258,26 @@ function rt(p) {     // рейтинг ладдера; Relic — с пометк
   return `${p.rating}`;
 }
 function race(r) { return r ? esc(RACE[r] || r) : ''; }
+function pingStr(pg) { if (!pg || !Object.keys(pg).length) return '—'; return Object.entries(pg).map(([ip, ms]) => ip.split('.').pop() + ':' + (ms < 0 ? '×' : ms)).join(' '); }
+function srvKind(p) { return p.own ? (p.compat ? 'relay-compat' : 'own-srv') : 'relic'; }
+function dbgLine(p) { return `<div class="dbgx">pool <b>${esc(p.pool || '—')}</b> · ${srvKind(p)} · grp:${esc(p.group || '—')} · maps:${p.maps} · ±${p.maxdiff || 0} · ping:${pingStr(p.ping)}${(p.ver || p.elite) ? ` · v:${esc(p.ver || '?')}${p.elite ? '/' + esc(p.elite) : ''}` : ''}${p.os ? ' · ' + esc(p.os) : ''}${p.ua ? ` · <span title="${esc(p.ua)}">ua</span>` : ''}</div>`; }
+function dbgTag(p) { return (p.pool != null || p.own != null) ? ` <span class="dbgx" style="display:inline" title="pool ${esc(p.pool || '—')} · ${srvKind(p)} · grp ${esc(p.group || '—')}${p.ver ? ' · v' + esc(p.ver) : ''}">[${srvKind(p)}${p.group ? '·' + esc(p.group) : ''}]</span>` : ''; }
 async function loadLive() {
   try {
-    const d = await (await fetch('/ladder/api/mm/live', { cache: 'no-store' })).json();
+    const dbg = !!($('#dbg') && $('#dbg').checked);
+    const d = await (await fetch('/ladder/api/mm/live' + (dbg ? '?debug=1' : ''), { cache: 'no-store' })).json();
     const S = d.searching || [], M = d.matches || [];
     $('#l-n').textContent = S.length; $('#l-m').textContent = M.length;
     $('#l-search').innerHTML = S.length ? S.map(p => {
       const lim = [p.maps ? `${T('maps')}: ${p.maps}` : T('anyMap'), p.max_diff ? `±${p.max_diff} ${T('ratingDiff')}` : T('anyOpp')].join(' · ');
       return `<div class="li"><div class="top"><span><span class="tag">${esc(p.mode)}</span><span class="nm">${who(p)}</span></span>
-        <span class="rt">${rt(p)}</span></div><div class="meta">${race(p.race) ? race(p.race) + ' · ' : ''}${lim} · ${T('waits')} ${dur(p.waiting)}</div></div>`;
+        <span class="rt">${rt(p)}</span></div><div class="meta">${race(p.race) ? race(p.race) + ' · ' : ''}${lim} · ${T('waits')} ${dur(p.waiting)}</div>${dbg ? dbgLine(p) : ''}</div>`;
     }).join('') : `<div class="empty">${T('nobody')}</div>`;
     $('#l-matches').innerHTML = M.length ? M.map(m => {
-      const t = ps => ps.map(p => `${who(p)} <span class="rt">${rt(p)}</span>${p.race ? ' <span class="meta">(' + race(p.race) + ')</span>' : ''}`).join(', ');
+      const t = ps => ps.map(p => `${who(p)} <span class="rt">${rt(p)}</span>${p.race ? ' <span class="meta">(' + race(p.race) + ')</span>' : ''}${dbg ? dbgTag(p) : ''}`).join(', ');
       return `<div class="li"><div class="top"><span><span class="tag ${m.state}">${STATE[m.state] || m.state}</span><span class="tag">${esc(m.mode)}</span></span>
         <span class="meta">${dur(m.since)}</span></div><div>${t(m.team1)}<span class="vs">vs</span>${t(m.team2)}</div>
-        <div class="meta">${mapName(m.map)}</div></div>`;
+        <div class="meta">${mapName(m.map)}${dbg && ('relay' in m) ? ' · relay: ' + esc(m.relay || 'relic') : ''}</div></div>`;
     }).join('') : `<div class="empty">${T('noMatches')}</div>`;
     $('#s-online').textContent = d.online;
     const q = d.queue || {}; $('#s-queue').textContent = (q['1v1']||0) + (q['2v2']||0) + (q['3v3']||0);
@@ -348,6 +357,12 @@ function heroImg(p) {
   return h ? ri + `<img src="${A + h.icon}" alt="" title="${esc(raceName(p.race) + ' · ' + h.name)}">` : ri;
 }
 function hDate(t) { return new Date(t * 1000).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+// подпись часового пояса зрителя (по смещению браузера на дату матча, с учётом перехода на летнее время)
+function tzLabel(t) { const off = -new Date(t * 1000).getTimezoneOffset(); if (!off) return 'UTC'; const a = Math.abs(off), hh = Math.floor(a / 60), mm = a % 60; return 'UTC' + (off > 0 ? '+' : '−') + hh + (mm ? ':' + String(mm).padStart(2, '0') : ''); }
+// то же время в UTC — в подсказку, чтобы сверить независимо от зоны
+function hUTC(t) { return new Date(t * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'; }
+// человекочитаемое «сколько назад»
+function humanAgo(t) { const s = Math.floor(Date.now() / 1000) - t; if (s < 45) return T('agoNow'); const m = Math.round(s / 60); if (m < 60) return m + ' ' + T('agoMin'); const h = Math.round(s / 3600); if (h < 24) return h + ' ' + T('agoHour'); return Math.round(s / 86400) + ' ' + T('agoDay'); }
 function hCard(m) {
   const side = t => {
     const ps = m.players.filter(p => p.team === t);
@@ -360,7 +375,7 @@ function hCard(m) {
   const res = (m.estimated || m.state === 'finished') ? '' : T('hRes')[m.state];
   const w = m.watchers && m.watchers.length ? ` · ${T('watchers')}: ${m.watchers.map(esc).join(', ')}` : '';
   return `<div class="hm"><div class="mini" ${mini} title="${mapTitle(mk)}"></div><div style="min-width:0">
-    <div class="hd"><b>${esc(m.mode)}</b> · <b>${mapTitle(mk)}</b> · ${hDate(m.started)}${m.duration ? ' · ' + dur(m.duration) : ''}${w}</div>
+    <div class="hd"><b>${esc(m.mode)}</b> · <b>${mapTitle(mk)}</b> · <span title="${hUTC(m.started)}">${hDate(m.started)} (${tzLabel(m.started)})</span> · <span title="${hUTC(m.started)}">${humanAgo(m.started)}</span>${m.duration ? ' · ' + dur(m.duration) : ''}${w}</div>
     <div class="teams">${side(1)}<span class="vsx">vs</span>${side(2)}</div></div>
     <div class="act">${m.estimated ? `<span class="res est" title="${T('estHint')}">≈ ${T('estResult')}${m.confidence ? ' · ' + esc((I18N[LANG].conf && I18N[LANG].conf[m.confidence]) || m.confidence) : ''}</span>` : (res ? `<span class="res">${esc(res)}</span>` : '')}${m.replay ? `<a href="/replay/r/${esc(m.replay)}">▶ ${T('replay')}</a>` : `<span class="res">${T('noReplay')}</span>`}</div></div>`;
 }
@@ -394,7 +409,7 @@ async function initHistory() {
 $('#lang').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; LANG = b.dataset.l;
   try { localStorage.setItem('ladderLang', LANG); } catch (er) {} applyLang(); loadLive(); loadBoard(); hMapsFilled = false; hFillSelects(null); loadHistory(); });
 applyLang();
-(async () => { loadLive(); setInterval(loadLive, 5000); initHistory(); await loadSeasons(); await loadBoard(); })();
+(async () => { const _db = $('#dbg'); if (_db) { try { _db.checked = localStorage.getItem('ladderDbg') === '1'; } catch (e) {} _db.addEventListener('change', () => { try { localStorage.setItem('ladderDbg', _db.checked ? '1' : '0'); } catch (e) {} loadLive(); }); } loadLive(); setInterval(loadLive, 5000); initHistory(); await loadSeasons(); await loadBoard(); })();
 </script>
 </body>
 </html>

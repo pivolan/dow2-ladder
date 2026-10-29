@@ -608,7 +608,9 @@ def mm_join(steam, mode, d=None):
                      'pid': pid, 'name': name or _clean(d.get('name')), 'state': 'searching', 'match': None, 'role': None,
                      'rsrc': rsrc, 'race': _clean(d.get('race'), 32), 'hero': _clean(d.get('hero'), 32), 'maps': maps, 'max_diff': max_diff,
                      'ts': now, 'seen': now, 'pool': '%s|%s' % (_clean(d.get('group'), 24) or '', 'own' if d.get('own_server') and not d.get('relay_compat') else ''),
-                     'own': bool(d.get('own_server')), 'ping': _relay_ping(d.get('relay_ping')) if d.get('own_server') else None}
+                     'own': bool(d.get('own_server')), 'ping': _relay_ping(d.get('relay_ping')) if d.get('own_server') else None,
+                     'group': _clean(d.get('group'), 24) or '', 'compat': bool(d.get('relay_compat')),
+                     'ua': _clean(d.get('_ua'), 80) or '', 'ver': _clean(d.get('ver') or d.get('launcher'), 32) or '', 'elite': _clean(d.get('elite'), 32) or '', 'os': _clean(d.get('os'), 24) or ''}
         if mode == WATCH: _assign_watchers()
         elif d.get('bots'):   # тест: матч сразу против компьютеров, хост заполнит пустые слоты ИИ
             MM_SEQ[0] += 1; mid = 'm%d' % MM_SEQ[0]; p = MM[steam]
@@ -834,7 +836,7 @@ def _steam_now():  # игроков DoW2: Retribution в Steam прямо сей
         except Exception: pass
     return STEAM_NOW['n']
 
-def mm_live():  # публично: кто ищет и какие матчи создаются / идут (без SteamID)
+def mm_live(debug=False):  # публично: кто ищет и какие матчи создаются / идут (без SteamID). debug=1 — детали для отладки подбора
     now = time.time()
     with MM_LOCK:
         _reap()
@@ -843,16 +845,24 @@ def mm_live():  # публично: кто ищет и какие матчи с�
         _reap_playing(now)
         searching = [{'name': p.get('name') or 'Player', 'steam': p['steam'], 'games': p.get('games') or 0, 'rsrc': p.get('rsrc', 'ladder'), 'mode': p['mode'], 'rating': round(p['rating']),
                       'race': p.get('race'), 'maps': len(p.get('maps') or []), 'max_diff': p.get('max_diff') or 0,
-                      'waiting': int(now - p['ts'])}
+                      'waiting': int(now - p['ts']), **(dict(pool=p.get('pool'), own=bool(p.get('own')), compat=bool(p.get('compat')), group=p.get('group') or '', ping=p.get('ping'), ver=p.get('ver') or '', elite=p.get('elite') or '', os=p.get('os') or '', ua=p.get('ua') or '', maxdiff=p.get('max_diff') or 0) if debug else {})}
                      for p in sorted(MM.values(), key=lambda p: p['ts']) if p['state'] == 'searching']
-        def team(m, steams): return [dict(m['players'].get(s, {'name': 'Player'}), steam=s) for s in steams]
+        def team(m, steams):
+            out = []
+            for s in steams:
+                base = dict(m['players'].get(s, {'name': 'Player'}), steam=s)
+                if debug:
+                    q = MM.get(s) or {}
+                    base.update(pool=q.get('pool'), own=bool(q.get('own')), compat=bool(q.get('compat')), group=q.get('group') or '', ver=q.get('ver') or '', elite=q.get('elite') or '', os=q.get('os') or '')
+                out.append(base)
+            return out
         matches = []
         for m in list(MM_MATCHES.values()) + list(MM_PLAYING.values()):
             st = m.get('state') if m.get('state') == 'playing' else ('lobby' if m.get('lobby') else 'creating')
             matches.append({'id': m['id'], 'mode': m['mode'], 'map': m.get('map'), 'state': st,
                             'watchers': [dict(m['players'].get(w, {'name': 'Player'}), steam=w) for w in m.get('watchers', [])],
                             'since': int(now - (m.get('started') or m['created'])),
-                            'team1': team(m, m['host']), 'team2': team(m, m['guest'])})
+                            'team1': team(m, m['host']), 'team2': team(m, m['guest']), **({'relay': m.get('relay')} if debug else {})})
         online = sum(1 for t in PRESENCE.values() if now - t < 60)
         res = {'online': online, 'queue': _counts(), 'searching': searching, 'matches': matches}
     res['in_game'] = _steam_now()
@@ -991,7 +1001,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/ladder/api/stats': return self.send(200, stats())
             if u.path == '/ladder/api/seasons': return self.send(200, {'seasons': seasons(), 'current': current_season()})
             if u.path == '/ladder/api/mm/status': return self.send(200, mm_status(), cache=0)
-            if u.path == '/ladder/api/mm/live': return self.send(200, mm_live(), cache=0)
+            if u.path == '/ladder/api/mm/live': return self.send(200, mm_live(qs.get('debug', ['0'])[0] in ('1', 'true')), cache=0)
             if u.path == '/ladder/api/history':
                 g = lambda k: qs.get(k, [''])[0]
                 return self.send(200, history(g('q')[:64], g('mode')[:8], g('map')[:64], g('race')[:32], g('page') or 0, g('n') or 30, g('off')), cache=10)
@@ -1036,7 +1046,9 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/ladder/api/fb/send': return self.send(200, fb_send(d), cache=0)
                 if not _fb_token_ok(d.get('token')): return self.send(403, {'error': 'token'}, cache=0)
                 d['name'] = 'Elite dev'; return self.send(200, fb_send(d, 'dev'), cache=0)
-            d = self._body(); steam = str(d.get('steam', ''))[:32]
+            d = self._body()
+            if isinstance(d, dict): d['_ua'] = self.headers.get('User-Agent', '')
+            steam = str(d.get('steam', ''))[:32]
             if not steam.isdigit(): return self.send(400, {'error': 'steam'}, cache=0)
             with MM_LOCK: _touch(steam)
             if u.path == '/ladder/api/mm/hello': return self.send(200, mm_hello(steam), cache=0)
