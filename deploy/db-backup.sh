@@ -3,7 +3,7 @@
 # ladder (matches, ratings, automatch history), launcher chat, player stats, usage counts, replay index. Daily, kept 14 days.
 # A consistent copy via VACUUM INTO (one read transaction; the services keep running and writing), zstd, upload, then the local copy goes.
 set -uo pipefail
-DBS="/srv/ladder/data/ladder.sqlite /srv/ladder/data/feedback.sqlite /srv/relicstats/data/relic.sqlite /srv/relicstats/data/usage.db /srv/replayweb/data/index.sqlite"
+DBS="/srv/ladder/data/ladder.sqlite /srv/ladder/data/community.sqlite /srv/ladder/data/feedback.sqlite /srv/relicstats/data/relic.sqlite /srv/relicstats/data/usage.db /srv/replayweb/data/index.sqlite"
 DAY=$(date +%F); TMP=$(mktemp -d /srv/.dbbackup.XXXXXX); trap 'rm -rf "$TMP"' EXIT
 say() { telegram_send --chat -1003866396190 --thread 18850 text "$1" >/dev/null 2>&1 || true; echo "$1"; }
 fail=""; total=0

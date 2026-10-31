@@ -6,6 +6,7 @@ import random
 import json, os, re, sqlite3, threading, time, math, base64, zlib, urllib.request, urllib.parse
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from concurrent.futures import ThreadPoolExecutor
+import stream, users                                # launcher users / presence, the live stream (SSE)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = ROOT + '/data/ladder.sqlite'
@@ -37,6 +38,7 @@ with db() as c:
     CREATE TABLE IF NOT EXISTS members (profile_id INTEGER, match_id INTEGER, start INTEGER, PRIMARY KEY (profile_id, match_id));
     CREATE INDEX IF NOT EXISTS members_p ON members (profile_id, start);
     CREATE TABLE IF NOT EXISTS profiles (profile_id INTEGER PRIMARY KEY, alias TEXT, steam TEXT, country TEXT, elite_seen INTEGER DEFAULT 0, updated INTEGER);
+    CREATE INDEX IF NOT EXISTS profiles_steam ON profiles (steam);
     -- рейтинг: по игроку, режиму и сезону (считается из matches, можно пересчитать с нуля)
     CREATE TABLE IF NOT EXISTS ratings (profile_id INTEGER, mode TEXT, season TEXT, rating REAL, rd REAL, vol REAL,
                                         games INTEGER, wins INTEGER, losses INTEGER, last INTEGER,
@@ -354,7 +356,7 @@ MM_CANCELLED = {}  # steam -> {'by': имя, 'match': id, 't': время}: ма
 MM_SEQ = [0]
 PRESENCE = {}    # steam(str) -> last_seen (лаунчер открыт/активен)
 def _touch(steam):
-    if steam: PRESENCE[str(steam)] = time.time()
+    if steam: PRESENCE[str(steam)] = time.time(); users.game_seen(steam)
 MODES = ('1v1', '2v2', '3v3')
 WATCH = 'watch'
 TEAM_N = {'1v1': 1, '2v2': 2, '3v3': 3}
@@ -624,6 +626,7 @@ def mm_join(steam, mode, d=None):
     maps = [_clean(x, 64) for x in (d.get('maps') or []) if _clean(x, 64)][:200]
     try: max_diff = max(0, min(3000, int(d.get('max_diff') or 0)))
     except Exception: max_diff = 0
+    users.set_alias(steam, name or _clean(d.get('name')))
     now = time.time()
     with MM_LOCK:
         _reap()
@@ -701,6 +704,7 @@ def mm_started(steam):  # хост нажал Start: матч переходит
 
 def _end_match(mid, m, now):  # под MM_LOCK: матч закончился (вернулись в меню / все вышли из игры / есть итог Relic)
     MM_PLAYING.pop(mid, None)
+    users.refresh_rating(m['host'] + m['guest'])
     if m.get('lobby'):
         try:
             with _db_lock, db() as c: c.execute('UPDATE mm_history SET ended = ? WHERE lobby = ? AND ended IS NULL', (int(now), m['lobby']))
@@ -729,7 +733,7 @@ def mm_ended(steam):  # игрок вернулся в меню после ма�
                         with _db_lock, db() as c: c.execute('UPDATE mm_history SET ended = ? WHERE lobby = ? AND ended IS NULL', (int(time.time()), m['lobby']))
                     except Exception: pass
                 m.setdefault('back', set()).add(steam)
-                if len(m['back']) >= 1: MM_PLAYING.pop(mid, None)
+                if len(m['back']) >= 1: MM_PLAYING.pop(mid, None); users.refresh_rating(m['host'] + m['guest'])
         return {'ok': True}
 
 # ---------- сорванные загрузки: у кого игра упала, пока матч грузился (остальные остались без игры) ----------
@@ -905,6 +909,31 @@ def mm_live(debug=False):  # публично: кто ищет и какие м�
         res = {'online': online, 'queue': _counts(), 'searching': searching, 'matches': matches, 'ingame': _steam_now()}
     res['in_game'] = _steam_now()
     return res
+
+def live_view():
+    # the launcher's Online block (c/live, the stream), only from memory: searching (looking for a game, watchers waiting
+    # with mode watch), ingame (every match: "setup" until the host starts it, then "playing" with the start time; watchers
+    # in their match), launcher (has the launcher open, nothing of the above) and users (name, avatar, rating of everyone
+    # listed). Each person in one group only: ingame > searching > launcher. Times are absolute (unix): the launcher counts
+    # the minutes, so the state does not change every second. Games without the launcher, not searching and not playing,
+    # are not listed (plan, decision 3).
+    now = time.time()
+    with MM_LOCK:
+        _reap()
+        for mid in [k for k, m in MM_PLAYING.items() if now - (m.get('started') or now) > 7200]:
+            MM_PLAYING.pop(mid, None)
+        side = lambda m, ss: [{'steam': s, 'race': (m['players'].get(s) or {}).get('race')} for s in ss]
+        ingame = [{'id': m['id'], 'state': 'playing' if m.get('state') == 'playing' else 'setup', 'mode': m['mode'], 'map': m.get('map'),
+                   'started': int(m['started']) if m.get('state') == 'playing' and m.get('started') else None,
+                   'team1': side(m, m['host']), 'team2': side(m, m['guest']), 'watchers': list(m.get('watchers', []))}
+                  for m in sorted(list(MM_MATCHES.values()) + list(MM_PLAYING.values()), key=lambda m: m['created'])]
+        busy = {x['steam'] for m in ingame for x in m['team1'] + m['team2']} | {w for m in ingame for w in m['watchers']}
+        searching = [{'steam': p['steam'], 'mode': p['mode'], 'race': p.get('race'), 'since': int(p['ts'])}
+                     for p in sorted(MM.values(), key=lambda p: p['ts']) if p['state'] == 'searching' and p['steam'] not in busy]
+    busy |= {p['steam'] for p in searching}
+    launcher = [{'steam': s, 'state': st} for s, st in users.in_launcher(now) if s not in busy]
+    return {'searching': searching, 'ingame': ingame, 'launcher': launcher,
+            'users': {s: users.card(s) for s in sorted(busy | {p['steam'] for p in launcher})}}
 
 def mm_leave(steam):
     with MM_LOCK:
@@ -1221,18 +1250,20 @@ community.ADMIN_OK = _fb_token_ok
 def _c_rating(steam):
     i = _rating_info(steam, '1v1')
     return round(i[1]) if i[5] != 'new' else None
-community.RATING = _c_rating
+users.RATING = _c_rating
 def _c_stats(steam):
-    # the launcher's profile: 1v1 of the current season - games, wins, losses and the place on the ladder page (5+ games)
+    # the launcher's profile: 1v1 of the current season - games, wins, losses (one query by the profiles_steam index).
+    # No place on the ladder: it meant building the whole season board for one player (plan, decision 4); old launchers
+    # simply show no place for rank null
     season = current_season()
     with db() as c:
         r = c.execute('''SELECT r.games, r.wins, r.losses FROM ratings r JOIN profiles p ON p.profile_id=r.profile_id
                          WHERE p.steam=? AND r.mode='1v1' AND r.season=? ORDER BY r.games DESC LIMIT 1''', (str(steam), season)).fetchone()
     if not r: return {'season': season, 'games': 0, 'wins': 0, 'losses': 0, 'rank': None}
-    rank = next((b['rank'] for b in board(season, '1v1', limit=100000) if b['steam'] == str(steam)), None)
-    return {'season': season, 'games': r[0], 'wins': r[1], 'losses': r[2], 'rank': rank}
+    return {'season': season, 'games': r[0], 'wins': r[1], 'losses': r[2], 'rank': None}
 community.STATS = _c_stats
-community.ALIAS = lambda steam: _rating_info(steam, '1v1')[4]
+community.LIVE = stream.LIVE = live_view
+users.ALIAS = lambda steam: _rating_info(steam, '1v1')[4]
 def _c_mm_state(steam):
     with MM_LOCK:
         p = MM.get(steam)
@@ -1247,4 +1278,5 @@ if __name__ == '__main__':
     threading.Thread(target=crawler, daemon=True).start()
     threading.Thread(target=_seasons_refresher, daemon=True).start()
     threading.Thread(target=_history_resolver, daemon=True).start()
+    threading.Thread(target=stream.publisher, daemon=True).start()
     ThreadingHTTPServer(('127.0.0.1', PORT), H).serve_forever()
