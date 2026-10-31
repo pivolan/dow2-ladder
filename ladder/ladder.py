@@ -1121,9 +1121,14 @@ def _c_mm_state(steam):
     return None
 community.MM_STATE = _c_mm_state
 
+class Server(ThreadingHTTPServer):
+    # the listen backlog (socketserver's default is 5): every open launcher holds a stream, and after a restart they all
+    # reconnect within a few seconds - with 5, most of them were refused (load test: 51 of 500 on the ramp up alone)
+    request_queue_size = 1024
+
 if __name__ == '__main__':
     threading.Thread(target=crawler, daemon=True).start()
     threading.Thread(target=_seasons_refresher, daemon=True).start()
     threading.Thread(target=_history_resolver, daemon=True).start()
     threading.Thread(target=stream.publisher, daemon=True).start()
-    ThreadingHTTPServer(('127.0.0.1', PORT), H).serve_forever()
+    Server(('127.0.0.1', PORT), H).serve_forever()
