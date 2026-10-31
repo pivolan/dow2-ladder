@@ -3,8 +3,8 @@
 #
 # Sign-in (Steam OpenID 2.0, no API key): the launcher makes a random nonce and opens the browser at
 #   /ladder/api/c/login?nonce=N -> Steam -> /ladder/api/c/return?nonce=N (checked with Steam: check_authentication)
-# then asks /ladder/api/c/claim?nonce=N (once) for its session token. Name and avatar come from the public
-# steamcommunity.com/profiles/<id>?xml=1 (no key needed), refreshed once a day.
+# then asks /ladder/api/c/claim?nonce=N (once) for its session token. Names and avatars: users.py (from memory, Steam is
+# asked in the background, never inside a request).
 #
 # GET  login?nonce=          -> redirect to Steam            GET  return?...      <- Steam comes back here
 # GET  claim?nonce=          -> {token, steam, name, avatar} (once, 10 minutes)
@@ -13,64 +13,64 @@
 #      claim, so the account is bound to the first computer (device = hash of the machine id) that signs in with it; another
 #      computer needs one sign-in through the browser (token of that session) to be bound too.
 # Every step is written to the journal (journalctl -u dow2-ladder | grep community).
-# POST me      {token}       -> the signed-in profile (name, avatar, rating, stats: 1v1 games / wins / losses / rank this season)
-# POST hello   {token?, state, uid?}  every ~30 s from the launcher: "I'm here" -> {online: [...]}
+# POST me      {token}       -> the signed-in profile (name, avatar, rating, stats: 1v1 games / wins / losses this season; rank: null)
+# POST hello   {token?, state, uid?}  "I'm here" (old launchers every ~30 s, new ones when menu / game changes) -> {online: [...]}
 # GET  online                -> who has the launcher open (signed in, seen in the last 90 s)
-# GET  msgs?room=&after=     -> {msgs: [...]} (the last 100, or the ones after id)
-# POST say     {token, room, text}
+# GET  live                  -> the Online block: searching / ingame / launcher + users (ladder.live_view)
+# GET  stream?after=all:N,ru:N,en:N  (headers X-Token, X-State) -> SSE, see stream.py
+# GET  msgs?room=&after=&limit=&before= -> {msgs: [...]}: the last `limit` (1000 at most and by default), the ones after
+#      an id (200 at most) or before one (paging up). RU and EN are one feed in two languages: text is in the language of
+#      the asked room, orig / lang / ru / en carry the original and the translations.
+# POST say     {token, room, text, cid?} -> {ok, id, msg} | {ok: false, error[, retry_after ms][, retry]}
 # POST logout  {token}
 # POST mod     {admin, op: del|ban|unban, id|steam}   (admin = the fb-admin token)
-import html, json, os, re, secrets, sqlite3, threading, time, urllib.parse, urllib.request
+import collections, html, json, os, re, secrets, sqlite3, threading, time, urllib.parse, urllib.request
+import stream, users
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = ROOT + '/data/community.sqlite'
 BASE = 'https://dow2.fintebtc.de'                    # where Steam sends the player back (OpenID realm)
 ROOMS = ('all', 'ru', 'en')
+FEED = {'all': ('all',), 'ru': ('ru', 'en'), 'en': ('ru', 'en')}   # RU and EN: one feed, the room only picks the language
 ONLINE_SECS = 90
-RATING = None                                       # ladder.py: steam -> rating (1v1) or None
 MM_STATE = None                                     # ladder.py: steam -> 'search' | 'match' | None
 ADMIN_OK = None                                     # ladder.py: admin token -> bool
 STATS = None                                        # ladder.py: steam -> 1v1 stats of the season for the profile
-ALIAS = None                                        # ladder.py: steam -> the name the ladder / Relic knows (a Steam profile without a name)
+LIVE = None                                         # ladder.py: live_view()
 LOCK = threading.Lock()
-PRESENCE = {}                                       # steam -> {'seen', 'state'}  (in memory: who is here now)
+PRESENCE = {}                                       # steam -> {'seen', 'state'}  (in memory: who is here now; old endpoints)
 RATE = {}                                           # steam -> [times of the last messages]
+INFLIGHT = {}                                       # (steam, cid) -> Event while that message is being checked
 
 def log(event, **kv):
     print('community: %s %s' % (event, ' '.join('%s=%s' % (k, str(v)[:120].replace(' ', '_')) for k, v in kv.items())), flush=True)
 
 def db():
-    c = sqlite3.connect(DB, timeout=30)
-    c.execute('CREATE TABLE IF NOT EXISTS device (steam TEXT, device TEXT, first INTEGER, last INTEGER, PRIMARY KEY (steam, device))')
-    c.execute('CREATE TABLE IF NOT EXISTS sess (token TEXT PRIMARY KEY, steam TEXT, ts INTEGER)')
-    c.execute('CREATE TABLE IF NOT EXISTS pending (nonce TEXT PRIMARY KEY, token TEXT, ts INTEGER)')
-    c.execute('CREATE TABLE IF NOT EXISTS prof (steam TEXT PRIMARY KEY, name TEXT, avatar TEXT, ts INTEGER, banned INTEGER DEFAULT 0)')
-    c.execute('CREATE TABLE IF NOT EXISTS msg (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, steam TEXT, text TEXT, ts INTEGER, deleted INTEGER DEFAULT 0)')
-    c.execute('CREATE INDEX IF NOT EXISTS msg_room ON msg(room, id)')
-    return c
+    c = sqlite3.connect(DB, timeout=30); c.execute('PRAGMA journal_mode=WAL'); return c
+
+def init_db():  # once at start, not on every connection
+    os.makedirs(os.path.dirname(DB), exist_ok=True)
+    with db() as c:
+        c.executescript('''
+        CREATE TABLE IF NOT EXISTS device (steam TEXT, device TEXT, first INTEGER, last INTEGER, PRIMARY KEY (steam, device));
+        CREATE TABLE IF NOT EXISTS sess (token TEXT PRIMARY KEY, steam TEXT, ts INTEGER);
+        CREATE TABLE IF NOT EXISTS pending (nonce TEXT PRIMARY KEY, token TEXT, ts INTEGER);
+        CREATE TABLE IF NOT EXISTS prof (steam TEXT PRIMARY KEY, name TEXT, avatar TEXT, ts INTEGER, banned INTEGER DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS msg (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, steam TEXT, text TEXT, ts INTEGER, deleted INTEGER DEFAULT 0);
+        CREATE INDEX IF NOT EXISTS msg_room ON msg(room, id);
+        ''')
+        have = {r[1] for r in c.execute('PRAGMA table_info(msg)')}
+        # one row per message: the original (text) in its language (lang: ru / en / other) and the translation to the
+        # other language (NULL when not needed or the same as the original); cid - the launcher's id against duplicates
+        for col in ('lang TEXT', 'text_ru TEXT', 'text_en TEXT', 'cid TEXT'):
+            if col.split()[0] not in have: c.execute('ALTER TABLE msg ADD COLUMN ' + col)
+        c.execute('CREATE UNIQUE INDEX IF NOT EXISTS msg_cid ON msg(steam, cid) WHERE cid IS NOT NULL')
+    users.DB = DB
+    users.load()
 
 def _get(url, data=None, timeout=15):
     r = urllib.request.Request(url, data=data, headers={'User-Agent': 'EliteLadder/1.0'})
     with urllib.request.urlopen(r, timeout=timeout) as f: return f.read().decode('utf-8', 'replace')
-
-def profile(steam, refresh=False):
-    with db() as c:
-        row = c.execute('SELECT name, avatar, ts, banned FROM prof WHERE steam=?', (steam,)).fetchone()
-    if row and not refresh and time.time() - row[2] < 86400: return {'name': row[0], 'avatar': row[1], 'banned': row[3]}
-    name, avatar = (row[0], row[1]) if row else ('Player', '')
-    try:
-        x = _get('https://steamcommunity.com/profiles/%s/?xml=1' % steam)
-        m = re.search(r'<steamID><!\[CDATA\[(.*?)\]\]></steamID>', x, re.S); name = (m and m.group(1).strip()[:48]) or name
-        m = re.search(r'<avatarMedium><!\[CDATA\[(.*?)\]\]></avatarMedium>', x, re.S); avatar = (m and m.group(1).strip()) or avatar
-    except Exception:
-        pass
-    if name == 'Player':
-        try: name = (ALIAS and ALIAS(steam)) or name
-        except Exception: pass
-    with db() as c:
-        c.execute('INSERT INTO prof(steam, name, avatar, ts) VALUES(?,?,?,?) ON CONFLICT(steam) DO UPDATE SET name=excluded.name, avatar=excluded.avatar, ts=excluded.ts',
-                  (steam, name, avatar, int(time.time())))
-    return {'name': name, 'avatar': avatar, 'banned': row[3] if row else 0}
 
 def _session(token):
     if not token or len(str(token)) > 80: return None
@@ -78,20 +78,9 @@ def _session(token):
         r = c.execute('SELECT steam FROM sess WHERE token=?', (str(token),)).fetchone()
     return r and r[0]
 
-RCACHE = {}                                         # steam -> (rating, time): looked up in the background, at most every 30 min
-def _rating(steam):
-    v = RCACHE.get(steam)
-    if not v or time.time() - v[1] > 1800:
-        RCACHE[steam] = (v[0] if v else None, time.time())
-        def look():
-            try: RCACHE[steam] = (RATING and RATING(steam), time.time())
-            except Exception: pass
-        threading.Thread(target=look, daemon=True).start()
-    return RCACHE[steam][0]
-
 def _user(steam):
-    p = profile(steam)
-    return {'steam': steam, 'name': p['name'], 'avatar': p['avatar']}
+    u = users.get(steam)
+    return {'steam': steam, 'name': u['name'], 'avatar': u['avatar']}
 
 # ---------- sign-in ----------
 def login_url(nonce):
@@ -127,7 +116,7 @@ def claim(nonce):
         c.execute('DELETE FROM pending WHERE nonce=?', (str(nonce)[:64],))
     if time.time() - r[1] > 600: return {'ok': False, 'error': 'expired'}
     steam = _session(r[0])
-    return dict(_user(steam), ok=True, token=r[0], rating=_rating(steam))
+    return dict(_user(steam), ok=True, token=r[0], rating=users.rating(steam))
 
 def local(d, ip=''):
     steam = str(d.get('steam', '')); dev = str(d.get('device', ''))[:64].lower()
@@ -142,19 +131,18 @@ def local(d, ip=''):
         c.execute('INSERT INTO device VALUES(?,?,?,?) ON CONFLICT(steam, device) DO UPDATE SET last=excluded.last', (steam, dev, now, now))
         token = secrets.token_urlsafe(32)
         c.execute('INSERT INTO sess VALUES(?,?,?)', (token, steam, now))
-    p = profile(steam, refresh=True)
-    nm = str(d.get('name', '')).strip()[:48]
-    if p['name'] in ('', 'Player') and nm:
-        with db() as c: c.execute('UPDATE prof SET name=? WHERE steam=?', (nm, steam))
+    users.fetch_now(steam)
+    users.set_alias(steam, d.get('name'))           # the name of the Steam client here: shown if Steam gives none
     log('local-ok', ip=ip, steam=steam, device=dev[:12], first=not known)
-    return dict(_user(steam), ok=True, token=token, rating=_rating(steam))
+    return dict(_user(steam), ok=True, token=token, rating=users.rating(steam))
 
-# ---------- presence and chat ----------
+# ---------- presence ----------
 def hello(d):
     steam = _session(d.get('token'))
     state = d.get('state') if d.get('state') in ('menu', 'game') else 'menu'
     if steam:
         with LOCK: PRESENCE[steam] = {'seen': time.time(), 'state': state}
+        users.launcher_seen(steam, state)
     return {'ok': True, 'signed_in': bool(steam), 'online': online()}
 
 def online():
@@ -162,52 +150,189 @@ def online():
     with LOCK: here = [(s, p) for s, p in PRESENCE.items() if now - p['seen'] < ONLINE_SECS]
     out = []
     for s, p in here:
-        u = _user(s); st = p['state']
+        u = users.get(s, True); st = p['state']
         try: st = (MM_STATE and MM_STATE(s)) or st
         except Exception: pass
-        out.append(dict(u, state=st, rating=_rating(s)))
+        out.append({'steam': s, 'name': u['name'], 'avatar': u['avatar'], 'state': st, 'rating': u['rating']})
     out.sort(key=lambda u: u['name'].lower())
     return out
 
-def _msg(r):
-    p = profile(r[2])
-    return {'id': r[0], 'room': r[1], 'steam': r[2], 'name': p['name'], 'avatar': p['avatar'], 'text': r[3], 'ts': r[4]}
+# ---------- moderation and translation ----------
+# One call per message to the checking service (data/chat_check.json: {"url": ..., "token": ...}), POST
+# {text, lang, translate: [ru|en, ...]} -> {allowed, reason?, ru?, en?}. The language is found here (share of Cyrillic),
+# only the other language is asked for ("other": both); texts with 3 letters or fewer (gg, +, smileys, numbers, links)
+# are neither checked nor translated; short repeated texts come from a small cache. No file: everything is allowed and
+# nothing is translated. 4 calls at a time, 30 s per message in all; no answer in time = not published, the author retries.
+CHECK_FILE = ROOT + '/data/chat_check.json'
+CHECK_SEM = threading.Semaphore(4)
+BUDGET = 30
+CACHE = collections.OrderedDict()                   # short text -> result (500 at most)
 
-def msgs(room, after):
-    room = room if room in ROOMS else 'all'
-    try: after = int(after)
-    except Exception: after = 0
+def lang_of(text):
+    cyr = len(re.findall(r'[а-яёА-ЯЁ]', text)); lat = len(re.findall(r'[A-Za-z]', text))
+    return 'other' if not cyr and not lat else 'ru' if cyr >= lat else 'en'
+
+def trivial(text):
+    return len(re.findall(r'[^\W\d_]', re.sub(r'https?://\S+', '', text))) <= 3
+
+def _check_cfg():
+    try:
+        with open(CHECK_FILE) as f: cfg = json.load(f)
+        return cfg if cfg.get('url') else None
+    except Exception:
+        return None
+
+def check(text, moderate=True):
+    # {allowed, reason, lang, ru, en}, or None when the service gave no answer in time
+    lang = lang_of(text); out = {'allowed': True, 'reason': '', 'lang': lang, 'ru': None, 'en': None}
+    cfg = _check_cfg()
+    if not cfg or trivial(text): return out
+    key = text.strip().lower() if len(text) <= 40 else None
+    with LOCK:
+        if key in CACHE: CACHE.move_to_end(key); return dict(CACHE[key])
+    need = ['en'] if lang == 'ru' else ['ru'] if lang == 'en' else ['ru', 'en']
+    end = time.time() + BUDGET
+    if not CHECK_SEM.acquire(timeout=BUDGET): return None
+    try:
+        left = end - time.time()
+        if left < 1: return None
+        body = json.dumps({'text': text, 'lang': lang, 'translate': need, 'moderate': moderate}, ensure_ascii=False).encode('utf-8')
+        r = urllib.request.Request(cfg['url'], data=body, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % cfg.get('token', '')})
+        with urllib.request.urlopen(r, timeout=left) as f: res = json.load(f)
+    except Exception as e:
+        log('check-fail', error=type(e).__name__); return None
+    finally:
+        CHECK_SEM.release()
+    out['allowed'] = bool(res.get('allowed', True)); out['reason'] = str(res.get('reason') or '')[:200]
+    for l in need:
+        tr = str(res.get(l) or '').strip()[:1000]
+        out[l] = tr if tr and tr != text else None
+    if key and out['allowed']:
+        with LOCK:
+            CACHE[key] = dict(out)
+            while len(CACHE) > 500: CACHE.popitem(last=False)
+    return out
+
+def backfill():
+    # once at start: the last 1000 RU/EN messages without a language get one and their translation, a message a second;
+    # each translated one goes out (msg_tr), until then the original is shown
+    if not _check_cfg(): return
     with db() as c:
-        if after > 0:
-            rows = c.execute('SELECT id, room, steam, text, ts FROM msg WHERE room=? AND id>? AND deleted=0 ORDER BY id LIMIT 200', (room, after)).fetchall()
-        else:
-            rows = c.execute('SELECT id, room, steam, text, ts FROM msg WHERE room=? AND deleted=0 ORDER BY id DESC LIMIT 1000', (room,)).fetchall()[::-1]   # the whole history at once (owner, 29.10)
-        dead = [r[0] for r in c.execute('SELECT id FROM msg WHERE room=? AND deleted=1 AND id>? ORDER BY id DESC LIMIT 50', (room, max(0, after - 500)))]
-    return {'room': room, 'msgs': [_msg(r) for r in rows], 'deleted': dead}
+        rows = c.execute("SELECT id, room, text FROM msg WHERE room IN ('ru','en') AND deleted=0 AND lang IS NULL ORDER BY id DESC LIMIT 1000").fetchall()
+    for mid, room, text in rows:
+        r = check(text, moderate=False)
+        if r is None: time.sleep(10); continue      # the service is down: the rest waits for the next start
+        with db() as c: c.execute('UPDATE msg SET lang=?, text_ru=?, text_en=? WHERE id=?', (r['lang'], r['ru'], r['en'], mid))
+        if r['ru'] or r['en']: stream.publish('msg_tr', {'id': mid, 'room': room, 'ru': r['ru'], 'en': r['en']})
+        time.sleep(1)
+
+# ---------- chat ----------
+COLS = 'id, room, steam, text, ts, lang, text_ru, text_en, cid'
+
+def _int(v):
+    try: return max(0, int(v))
+    except Exception: return 0
+
+def _msg(r, room=None):
+    # room: the asked one (its language picks text; old launchers show text as is); None = the stream event (room it was written in)
+    u = users.get(r[2]); orig, ru, en = r[3], r[6], r[7]
+    text = (ru or orig) if room == 'ru' else (en or orig) if room == 'en' else orig
+    return {'id': r[0], 'room': room or r[1], 'steam': r[2], 'name': u['name'], 'avatar': u['avatar'], 'text': text, 'ts': r[4],
+            'cid': r[8], 'lang': r[5] or '', 'orig': orig, 'ru': ru, 'en': en}
+
+def msgs(room, after, limit=None, before=None):
+    room = room if room in ROOMS else 'all'; rooms = FEED[room]
+    after, before = _int(after), _int(before); limit = min(1000, _int(limit) or 1000)
+    q = 'SELECT %s FROM msg WHERE room IN (%s) AND deleted=0' % (COLS, ','.join('?' * len(rooms)))
+    with db() as c:
+        if after > 0: rows = c.execute(q + ' AND id>? ORDER BY id LIMIT 200', (*rooms, after)).fetchall()
+        elif before > 0: rows = c.execute(q + ' AND id<? ORDER BY id DESC LIMIT ?', (*rooms, before, limit)).fetchall()[::-1]
+        else: rows = c.execute(q + ' ORDER BY id DESC LIMIT ?', (*rooms, limit)).fetchall()[::-1]
+        dead = [r[0] for r in c.execute('SELECT id FROM msg WHERE room IN (%s) AND deleted=1 AND id>? ORDER BY id DESC LIMIT 50' % ','.join('?' * len(rooms)),
+                                        (*rooms, max(0, after - 500)))]
+    return {'room': room, 'msgs': [_msg(r, room) for r in rows], 'deleted': dead}
+
+def missed(after):
+    # for the stream: after = "all:123,ru:45,en:67" (the last ids the launcher has); RU and EN share a feed (the smaller id).
+    # More than 200 missed in a feed: a reset for it instead, the launcher reads its last 100 again
+    got = {}
+    for part in str(after or '').split(','):
+        k, _, v = part.partition(':')
+        if k in ROOMS and v.isdigit(): got[k] = int(v)
+    out = []
+    feeds = [('all', got.get('all'))] + [('ru', min(v for v in (got.get('ru'), got.get('en')) if v is not None) if 'ru' in got or 'en' in got else None)]
+    for room, a in feeds:
+        if a is None: continue
+        rooms = FEED[room]
+        with db() as c:
+            rows = c.execute('SELECT %s FROM msg WHERE room IN (%s) AND deleted=0 AND id>? ORDER BY id LIMIT 201' % (COLS, ','.join('?' * len(rooms))), (*rooms, a)).fetchall()
+        if len(rows) > 200: out.append(('reset', {'room': room})); continue
+        out += [('msg', _msg(r)) for r in rows]
+    return out
+
+def _by_cid(steam, cid):
+    with db() as c:
+        r = c.execute('SELECT %s FROM msg WHERE steam=? AND cid=?' % COLS, (steam, cid)).fetchone()
+    return r
 
 def say(d):
     steam = _session(d.get('token'))
     if not steam: return {'ok': False, 'error': 'sign in with Steam to write'}
-    if profile(steam).get('banned'): return {'ok': False, 'error': 'you cannot write in the chat'}
+    if users.get(steam)['banned']: return {'ok': False, 'error': 'you cannot write in the chat'}
     room = d.get('room') if d.get('room') in ROOMS else 'all'
     text = ''.join(ch for ch in str(d.get('text', '')) if ch == '\n' or ch.isprintable()).strip()[:500]
     if not text: return {'ok': False, 'error': 'empty'}
-    now = time.time()
-    with LOCK:
-        t = [x for x in RATE.get(steam, []) if now - x < 60]
-        if t and now - t[-1] < 1.5 or len(t) >= 20: return {'ok': False, 'error': 'too fast'}
-        RATE[steam] = t + [now]
-        PRESENCE.setdefault(steam, {'state': 'menu'})['seen'] = now
-    with db() as c:
-        cur = c.execute('INSERT INTO msg(room, steam, text, ts) VALUES(?,?,?,?)', (room, steam, text, int(now)))
-    return {'ok': True, 'id': cur.lastrowid}
+    cid = str(d.get('cid') or '')
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,40}', cid): cid = None   # optional: old launchers send none
+    mine = None
+    if cid:
+        # the same message again (a retry): the stored one, or wait for the check already running
+        r = _by_cid(steam, cid)
+        if r: return {'ok': True, 'id': r[0], 'msg': _msg(r, room)}
+        with LOCK:
+            ev = INFLIGHT.get((steam, cid))
+            if not ev: mine = INFLIGHT[(steam, cid)] = threading.Event()
+        if ev:
+            ev.wait(BUDGET + 5); r = _by_cid(steam, cid)
+            return {'ok': True, 'id': r[0], 'msg': _msg(r, room)} if r else {'ok': False, 'error': 'timeout', 'retry': True}
+    try:
+        now = time.time()
+        with LOCK:
+            t = [x for x in RATE.get(steam, []) if now - x < 60]
+            if t and now - t[-1] < 1.5: return {'ok': False, 'error': 'too fast', 'retry_after': int((1.5 - (now - t[-1])) * 1000) + 50}
+            if len(t) >= 20: return {'ok': False, 'error': 'too fast', 'retry_after': int((60 - (now - t[0])) * 1000) + 50}
+            RATE[steam] = t + [now]
+            PRESENCE.setdefault(steam, {'state': 'menu'})['seen'] = now
+        users.launcher_seen(steam)
+        chk = check(text)
+        if chk is None: return {'ok': False, 'error': 'timeout', 'retry': True}
+        if not chk['allowed']:
+            log('rejected', steam=steam, reason=chk['reason']); return {'ok': False, 'error': chk['reason'] or 'rejected'}
+        try:
+            with db() as c:
+                cur = c.execute('INSERT INTO msg(room, steam, text, ts, lang, text_ru, text_en, cid) VALUES(?,?,?,?,?,?,?,?)',
+                                (room, steam, text, int(now), chk['lang'], chk['ru'], chk['en'], cid))
+                r = c.execute('SELECT %s FROM msg WHERE id=?' % COLS, (cur.lastrowid,)).fetchone()
+        except sqlite3.IntegrityError:              # the same cid stored a moment ago
+            r = _by_cid(steam, cid)
+        stream.publish('msg', _msg(r))
+        return {'ok': True, 'id': r[0], 'msg': _msg(r, room)}
+    finally:
+        if mine:
+            with LOCK: INFLIGHT.pop((steam, cid), None)
+            mine.set()
 
 def me(d):
     steam = _session(d.get('token'))
     if not steam: return {'ok': False, 'signed_in': False}
     try: stats = STATS and STATS(steam)
     except Exception: stats = None
-    return dict(_user(steam), ok=True, signed_in=True, rating=_rating(steam), stats=stats)
+    return dict(_user(steam), ok=True, signed_in=True, rating=users.rating(steam), stats=stats)
+
+def me_event(steam):  # the stream's own card: rating and the season's 1v1 games
+    try: st = (STATS and STATS(steam)) or {}
+    except Exception: st = {}
+    return {'rating': users.rating(steam), 'games': st.get('games', 0), 'wins': st.get('wins', 0), 'losses': st.get('losses', 0)}
 
 def logout(d):
     with db() as c: c.execute('DELETE FROM sess WHERE token=?', (str(d.get('token', ''))[:80],))
@@ -216,12 +341,17 @@ def logout(d):
 def mod(d):
     if not (ADMIN_OK and ADMIN_OK(d.get('admin'))): return {'ok': False, 'error': 'token'}
     op = d.get('op')
-    with db() as c:
-        if op == 'del': c.execute('UPDATE msg SET deleted=1 WHERE id=?', (int(d.get('id', 0)),))
-        elif op in ('ban', 'unban'):
-            profile(str(d.get('steam', '')))
-            c.execute('UPDATE prof SET banned=? WHERE steam=?', (1 if op == 'ban' else 0, str(d.get('steam', ''))))
-        else: return {'ok': False, 'error': 'op'}
+    if op == 'del':
+        mid = _int(d.get('id'))
+        with db() as c:
+            c.execute('UPDATE msg SET deleted=1 WHERE id=?', (mid,))
+            r = c.execute('SELECT room FROM msg WHERE id=?', (mid,)).fetchone()
+        if r: stream.publish('msg_del', {'id': mid, 'room': r[0]})
+    elif op in ('ban', 'unban'):
+        steam = str(d.get('steam', ''))
+        users.set_banned(steam, op == 'ban')
+        with db() as c: c.execute('UPDATE prof SET banned=? WHERE steam=?', (1 if op == 'ban' else 0, steam))
+    else: return {'ok': False, 'error': 'op'}
     return {'ok': True}
 
 PAGE = '''<!doctype html><meta charset="utf-8"><title>Elite Launcher</title>
@@ -239,19 +369,30 @@ def handle(h, method, u, d):
             h.send_response(302); h.send_header('Location', login_url(qs['nonce'])); h.send_header('Cache-Control', 'no-store')
             h.send_header('Content-Length', '0'); h.end_headers(); return
         if p == 'return':
-            steam, err = openid_return(u.query)
+            steam, err = openid_return(query=u.query)
             log('return', ip=ip, nonce=qs.get('nonce', '')[:8], steam=steam or '-', error=err or '-')
             if err: return h.send_html(PAGE % ('Не получилось войти / Sign-in failed: %s' % html.escape(err)), cache=0)
-            name = html.escape(profile(steam, refresh=True)['name'])
+            users.fetch_now(steam)
+            name = html.escape(users.get(steam)['name'])
             return h.send_html(PAGE % ('Вы вошли как <b>%s</b>. Вернитесь в лаунчер.<br><br>Signed in as <b>%s</b>. Go back to the launcher.' % (name, name)), cache=0)
         if p == 'claim':
             r = claim(qs.get('nonce', ''))
             if not r.get('wait'): log('claim', ip=ip, nonce=qs.get('nonce', '')[:8], ok=r.get('ok'), steam=r.get('steam', '-'), error=r.get('error', '-'))
             return h.send(200, r, cache=0)
         if p == 'online': return h.send(200, {'online': online()}, cache=0)
-        if p == 'msgs': return h.send(200, msgs(qs.get('room', 'all'), qs.get('after', '0')), cache=0)
+        if p == 'live': return h.send(200, LIVE(), cache=0)
+        if p == 'msgs': return h.send(200, msgs(qs.get('room', 'all'), qs.get('after', '0'), qs.get('limit'), qs.get('before')), cache=0)
+        if p == 'stream':
+            # the token only in a header, never in the address (addresses end up in logs)
+            steam = _session(h.headers.get('X-Token'))
+            state = h.headers.get('X-State') if h.headers.get('X-State') in ('menu', 'game') else 'menu'
+            if steam: users.launcher_seen(steam, state)
+            return stream.serve(h, ip, steam, lambda: users.launcher_seen(steam), lambda: missed(qs.get('after')), lambda: me_event(steam))
         return h.send(404, {'error': 'not found'}, cache=0)
     if p == 'local': return h.send(200, local(d or {}, ip), cache=0)
     fn = {'hello': hello, 'say': say, 'me': me, 'logout': logout, 'mod': mod}.get(p)
     if not fn: return h.send(404, {'error': 'not found'}, cache=0)
     return h.send(200, fn(d or {}), cache=0)
+
+init_db()
+threading.Thread(target=backfill, daemon=True).start()
