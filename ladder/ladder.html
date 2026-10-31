@@ -140,6 +140,7 @@ select { font: 600 14px Spectral, serif; color: var(--text); background: var(--p
   </header>
 
   <div class="mm">
+    <div class="stat"><b id="s-ingame">—</b><span data-t="ingame">в DoW II</span></div>
     <div class="stat"><b id="s-online">—</b><span data-t="online">онлайн</span></div>
     <div class="stat q"><b id="s-queue">—</b><span data-t="queue">в очереди</span></div>
     <div class="stat play"><b id="s-playing">—</b><span data-t="playing">играют</span></div>
@@ -200,6 +201,7 @@ function esc(s) { return (s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt
 async function loadStatus() {
   try {
     const d = await (await fetch('/ladder/api/mm/status', { cache: 'no-store' })).json();
+    $('#s-ingame').textContent = (d.ingame ?? '—');
     $('#s-online').textContent = d.online;
     const q = d.queue || {}; $('#s-queue').textContent = (q['1v1']||0) + (q['2v2']||0) + (q['3v3']||0);
     $('#s-playing').textContent = d.playing;
@@ -207,7 +209,7 @@ async function loadStatus() {
 }
 
 const I18N = {
-  ru: { online: 'онлайн', queue: 'в очереди', playing: 'играют', cta: 'Встать в очередь', searching: 'Сейчас ищут', matches: 'Матчи',
+  ru: { ingame: 'в DoW II', online: 'онлайн', queue: 'в очереди', playing: 'играют', cta: 'Встать в очередь', searching: 'Сейчас ищут', matches: 'Матчи',
         loading: 'Загрузка…', player: 'Игрок', rating: 'Рейтинг', games: 'Игр', maps: 'карт', anyMap: 'любая карта', anyOpp: 'любой соперник',
         ratingDiff: 'рейтинга', waits: 'ждёт', nobody: 'Никто не ищет. Нажмите «Find a Game» в игре.', noMatches: 'Сейчас матчей нет.',
         hostMap: 'карта на выбор хоста', sec: 'с', min: 'мин', agoNow: 'только что', agoMin: 'мин назад', agoHour: 'ч назад', agoDay: 'дн назад', noPlayers: 'Пока нет игроков с 5+ матчами в этом режиме.', error: 'Ошибка загрузки.',
@@ -219,7 +221,7 @@ const I18N = {
         hist: 'История матчей ладдера', hq: 'Ник, карта или лобби', allModes: 'Все режимы', allRaces: 'Все расы', allMaps: 'Все карты', more: 'Показать ещё', dbgLabel: 'Детали (отладка)',
         dlLauncher: 'Скачать лаунчер', replay: 'Реплей', conf: { 'высокая':'высокая','средняя':'средняя','низкая':'низкая' }, mmrAfter: 'MMR после матча', estResult: 'по реплею', estHint: 'Предположительный итог по реплею (парсер, пока Relic не отдал результат); обновится точным.', noReplay: 'реплея нет', won: 'победа', hNone: 'Матчей с такими условиями нет.', hRes: { finished: '', playing: 'идёт', unknown: 'итог неизвестен' },
         watchers: 'зрители' },
-  en: { online: 'online', queue: 'in queue', playing: 'playing', cta: 'Join the queue', searching: 'Searching now', matches: 'Matches',
+  en: { ingame: 'in DoW II', online: 'online', queue: 'in queue', playing: 'playing', cta: 'Join the queue', searching: 'Searching now', matches: 'Matches',
         loading: 'Loading…', player: 'Player', rating: 'Rating', games: 'Games', maps: 'maps', anyMap: 'any map', anyOpp: 'any opponent',
         ratingDiff: 'rating', waits: 'waiting', nobody: 'Nobody is searching. Press “Find a Game” in the game.', noMatches: 'No matches right now.',
         hostMap: 'map picked by the host', sec: 's', min: 'min', agoNow: 'just now', agoMin: 'min ago', agoHour: 'h ago', agoDay: 'd ago', noPlayers: 'No players with 5+ games in this mode yet.', error: 'Loading error.',
@@ -279,6 +281,7 @@ async function loadLive() {
         <span class="meta">${dur(m.since)}</span></div><div>${t(m.team1)}<span class="vs">vs</span>${t(m.team2)}</div>
         <div class="meta">${mapName(m.map)}${dbg && ('relay' in m) ? ' · relay: ' + esc(m.relay || 'relic') : ''}</div></div>`;
     }).join('') : `<div class="empty">${T('noMatches')}</div>`;
+    $('#s-ingame').textContent = (d.ingame ?? '—');
     $('#s-online').textContent = d.online;
     const q = d.queue || {}; $('#s-queue').textContent = (q['1v1']||0) + (q['2v2']||0) + (q['3v3']||0);
     $('#s-playing').textContent = M.filter(m => m.state === 'playing').length;

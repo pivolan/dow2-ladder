@@ -350,6 +350,7 @@ def stats():
 MM_LOCK = threading.Lock()
 MM = {}          # steam(str) -> игрок
 MM_MATCHES = {}  # match_id -> матч
+MM_CANCELLED = {}  # steam -> {'by': имя, 'match': id, 't': время}: матч распущен, пока игрок собирался в лобби (MMFind 0.32 уходит из лобби)
 MM_SEQ = [0]
 PRESENCE = {}    # steam(str) -> last_seen (лаунчер открыт/активен)
 def _touch(steam):
@@ -412,10 +413,11 @@ def _reap():  # вызывать под MM_LOCK: выкинуть тех, кто
     for s in [s for s, t in PRESENCE.items() if now - t > 120]:
         PRESENCE.pop(s, None)
     _reap_playing(now)
+    for s_ in [s_ for s_, c in MM_CANCELLED.items() if now - c['t'] > 300]: MM_CANCELLED.pop(s_, None)
     for mid, m in list(MM_MATCHES.items()):        # a match being set up whose players all left the queue (closed the game) - forget it
         if now - m.get('created', now) > 600 and not any(x in MM for x in m['host'] + m['guest']): MM_MATCHES.pop(mid, None)
 
-def _drop(steam):  # под MM_LOCK: убрать игрока и, если был в матче, вернуть соперника(ов) в поиск
+def _drop(steam):  # под MM_LOCK: убрать игрока; если был в матче, матч распускается (_cancel_match)
     p = MM.pop(steam, None)
     if p and p.get('role') == 'watcher':
         m = MM_MATCHES.get(p.get('match'))
@@ -423,14 +425,27 @@ def _drop(steam):  # под MM_LOCK: убрать игрока и, если бы
         return
     if p and p.get('match'):
         m = MM_MATCHES.pop(p['match'], None)
-        if m:
-            for s in m['host'] + m['guest']:
-                if s == steam: continue
-                op = MM.get(s)
-                if op: op.update(state='searching', match=None, role=None)   # время ожидания (ts) сохраняется - приоритет не теряется
-            for s in m.get('watchers', []):
-                op = MM.get(s)
-                if op: op.update(state='searching', match=None, role=None)
+        if m: _cancel_match(m, steam, p.get('name'))
+        return
+    if not p:                                     # 31.10.2026: Start pressed (match moved to "playing"), nobody loading yet - a cancel
+        now = time.time()                         # from the lobby still dissolves it (a match that is really on sends alive / never leaves)
+        for mid, m in list(MM_PLAYING.items()):
+            if steam in m['host'] + m['guest'] and not m.get('alive') and now - (m.get('started') or now) < 180:
+                MM_PLAYING.pop(mid, None)
+                if m.get('lobby'):
+                    try:
+                        with _db_lock, db() as c: c.execute('DELETE FROM mm_history WHERE lobby = ? AND result IS NULL', (m['lobby'],))
+                    except Exception: pass
+                _cancel_match(m, steam, (m['players'].get(steam) or {}).get('name'))
+
+def _cancel_match(m, steam, name):  # под MM_LOCK, 31.10.2026 (владелец: «отмена — и всех игроков распускает»): все участники вне очереди,
+    now = time.time()                 # их MMFind при опросе узнаёт, кто отменил, и уходит из лобби; искать заново — кнопкой
+    MM_MATCHES.pop(m['id'], None)
+    print('mm: match %s cancelled by %s' % (m['id'], name or steam), flush=True)
+    for s in m['host'] + m['guest'] + m.get('watchers', []):
+        if s == steam: continue
+        MM.pop(s, None)
+        MM_CANCELLED[s] = {'by': name or 'Player', 'match': m['id'], 't': now}
 
 def _common_maps(grp):  # пересечение желаемых карт группы (пустой список у игрока = любая карта)
     sets = [set(p.get('maps') or []) for p in grp]
@@ -456,7 +471,8 @@ def _try_match(mode):  # под MM_LOCK: нестрогий подбор с пр
     # 1) в матч всегда входит тот, кто ждёт дольше всех (никто не «застревает», пока другие играют снова и снова);
     # 2) хватает людей — сводим сразу; есть выбор — берём к нему тех, у кого есть общие карты и ближе рейтинг;
     # 3) карты и max_diff — пожелания, не запрет.
-    n = TEAM_N[mode]; need = n * 2; blocked = _blocked() | {p['steam'] for p in MM.values() if p.get('ruiner')}
+    n = TEAM_N[mode]; need = n * 2
+    blocked = set()   # 30.10.2026 owner: blacklists off - neither data/mm_block.txt nor 3 ruined matches a day keep anyone out (the rating penalty stays)
     while True:
         allw = sorted([p for p in MM.values() if p['state'] == 'searching' and p['mode'] == mode and p['steam'] not in blocked], key=lambda p: p['ts'])
         # pools: test groups stay among themselves; strict own-server players (Relay 7) only with each other. Relay 8
@@ -465,14 +481,25 @@ def _try_match(mode):  # под MM_LOCK: нестрогий подбор с пр
         for p in allw: pools.setdefault(p.get('pool', ''), []).append(p)
         waiting = next((w for w in sorted(pools.values(), key=lambda w: w[0]['ts']) if len(w) >= need), None)
         if not waiting: break
-        anchor = waiting[0]; amaps = set(anchor.get('maps') or [])
-        def score(q):
-            qm = set(q.get('maps') or [])
-            no_common = 1 if (amaps and qm and not (amaps & qm)) else 0
-            diff = abs(q['rating'] - anchor['rating'])
-            over = 1 if any(x.get('max_diff') and diff > x['max_diff'] for x in (anchor, q)) else 0
-            return (no_common, over, diff, q['ts'])
-        grp = [anchor] + sorted(waiting[1:], key=score)[:need - 1]
+        # own servers without compatibility (Relay.ini Fallback=0): such a player plays only where everybody has our servers on;
+        # everyone else (compatible, or without the add-on) plays with anybody. Whoever waits longest anchors a match he fits in.
+        forced = lambda x: x.get('own') and not x.get('compat')
+        fits = lambda g: not any(forced(x) for x in g) or all(x.get('own') for x in g)
+        grp = None
+        for anchor in waiting:
+            amaps = set(anchor.get('maps') or [])
+            def score(q):
+                qm = set(q.get('maps') or [])
+                no_common = 1 if (amaps and qm and not (amaps & qm)) else 0
+                diff = abs(q['rating'] - anchor['rating'])
+                over = 1 if any(x.get('max_diff') and diff > x['max_diff'] for x in (anchor, q)) else 0
+                return (no_common, over, diff, q['ts'])
+            g = [anchor]
+            for q in sorted([x for x in waiting if x is not anchor], key=score):
+                if len(g) >= need: break
+                if fits(g + [q]): g.append(q)
+            if len(g) == need: grp = g; break
+        if not grp: break
         grp.sort(key=lambda p: p['rating'])
         cm = _common_maps(grp)
         if cm: pool = sorted(cm)
@@ -526,6 +553,10 @@ def _best_relay(steams):
     # add-on): nothing is known about what he reaches - Relic too.
     pings = [(MM.get(s) or {}).get('ping') or {} for s in steams]
     if not pings or not all(pings): return ''
+    # Relay 13: a player who picked the server in the launcher pings only that one - the match goes there (the others'
+    # Relay.dll connect where the matchmaker says; our servers pass a guest on to the one that has the match)
+    picked = [next(iter(x)) for x in pings if len(x) == 1 and next(iter(x.values()), -1) > 0]
+    if picked: return picked[0]
     for h in RELAY_ORDER:
         if all(x.get(h, -1) > 0 for x in pings): return h
     return ''
@@ -600,6 +631,7 @@ def mm_join(steam, mode, d=None):
         for mid, m in list(MM_PLAYING.items()):
             if steam in m['host'] + m['guest'] + m.get('watchers', []):
                 _end_match(mid, m, now)
+        MM_CANCELLED.pop(steam, None)
         old = MM.get(steam)
         if old and old['mode'] == mode and now - old.get('jts', 0) < 15:   # повтор того же join через другое зеркало (клиент не дождался ответа)
             old['seen'] = now
@@ -607,7 +639,8 @@ def mm_join(steam, mode, d=None):
         MM[steam] = {'jts': now, 'steam': steam, 'mode': mode, 'rating': rating, 'rd': rd, 'games': games, 'ruiner': _ruin_blocked(steam),
                      'pid': pid, 'name': name or _clean(d.get('name')), 'state': 'searching', 'match': None, 'role': None,
                      'rsrc': rsrc, 'race': _clean(d.get('race'), 32), 'hero': _clean(d.get('hero'), 32), 'maps': maps, 'max_diff': max_diff,
-                     'ts': now, 'seen': now, 'pool': '%s|%s' % (_clean(d.get('group'), 24) or '', 'own' if d.get('own_server') and not d.get('relay_compat') else ''),
+                     'ts': now, 'seen': now, 'pool': '%s|' % (_clean(d.get('group'), 24) or ''),   # 30.10.2026: no separate pool for the forced own-server mode (gone in Relay 11) - one queue
+                    
                      'own': bool(d.get('own_server')), 'ping': _relay_ping(d.get('relay_ping')) if d.get('own_server') else None,
                      'group': _clean(d.get('group'), 24) or '', 'compat': bool(d.get('relay_compat')),
                      'ua': _clean(d.get('_ua'), 80) or '', 'ver': _clean(d.get('ver') or d.get('launcher'), 32) or '', 'elite': _clean(d.get('elite'), 32) or '', 'os': _clean(d.get('os'), 24) or ''}
@@ -628,7 +661,12 @@ def mm_poll(steam):
     steam = str(steam)
     with MM_LOCK:
         p = MM.get(steam)
-        if not p: return {'state': 'idle'}
+        if not p:
+            c = MM_CANCELLED.get(steam)
+            if c and time.time() - c['t'] < 300: return {'state': 'cancelled', 'match': c['match'], 'by': c['by']}
+            for m in MM_PLAYING.values():
+                if steam in m['host'] + m['guest'] + m.get('watchers', []): return {'state': 'playing', 'match': m['id']}
+            return {'state': 'idle'}
         p['seen'] = time.time()
         return _player_view(p)
 
@@ -864,7 +902,7 @@ def mm_live(debug=False):  # публично: кто ищет и какие м�
                             'since': int(now - (m.get('started') or m['created'])),
                             'team1': team(m, m['host']), 'team2': team(m, m['guest']), **({'relay': m.get('relay')} if debug else {})})
         online = sum(1 for t in PRESENCE.values() if now - t < 60)
-        res = {'online': online, 'queue': _counts(), 'searching': searching, 'matches': matches}
+        res = {'online': online, 'queue': _counts(), 'searching': searching, 'matches': matches, 'ingame': _steam_now()}
     res['in_game'] = _steam_now()
     return res
 
@@ -881,7 +919,7 @@ def mm_status():
         playing = len(MM_PLAYING) + sum(1 for m in MM_MATCHES.values() if m['lobby'])
         q = _counts()
         return {'online': online, 'queue': q, 'searching': sum(q.values()),
-                'matched': len(MM_MATCHES), 'playing': playing}
+                'matched': len(MM_MATCHES), 'playing': playing, 'ingame': _steam_now()}
 
 def mm_hello(steam):  # лёгкий heartbeat от открытого лаунчера (присутствие онлайн)
     with MM_LOCK:
@@ -910,6 +948,19 @@ def _fb_token_ok(t):
     except Exception: return False
 def _fb_msg(r):
     return {'id': r[0], 'author': r[3], 'name': r[2], 'text': r[4], 'images': json.loads(r[5] or '[]'), 'ts': r[6]}
+FB_RULES_MSG = 'Сообщение не отправлено: не прошло модерацию чата (бессвязный текст или политика). Переформулируйте по делу — мы на связи. Мат и эмоции в адрес мода при этом ок.'
+def fb_block_notice(uid):
+    # вставить разовое пояснение от Elite dev в тред (не дублировать, если последнее сообщение уже оно)
+    with FB_LOCK:
+        c = fb_db()
+        try:
+            last = c.execute('SELECT text FROM fb WHERE uid=? ORDER BY id DESC LIMIT 1', (uid,)).fetchone()
+            if last and last[0] == FB_RULES_MSG: return
+            c.execute('INSERT INTO fb (uid, name, author, text, images, ts, seen, meta) VALUES (?,?,?,?,?,?,?,?)',
+                      (uid, 'Elite dev', 'dev', FB_RULES_MSG, '[]', int(time.time()), 1, '{}'))
+            c.commit()
+        finally:
+            c.close()
 def fb_send(d, author='player'):
     uid = _fb_uid(d.get('uid'))
     if not uid: return {'error': 'uid'}
@@ -929,6 +980,9 @@ def fb_send(d, author='player'):
         with open(FB_DIR + '/' + fn, 'wb') as f: f.write(raw)
         imgs.append(fn)
     if not text.strip() and not imgs: return {'error': 'empty'}
+    if author == 'player' and text.strip() and fb_mod_load().get('premod') and fb_premod_block(text):
+        fb_block_notice(uid)
+        return {'error': 'blocked', 'msg': FB_RULES_MSG}
     meta = json.dumps({k: str(d.get(k))[:120] for k in ('launcher', 'os', 'elite', 'steam') if d.get(k)}, ensure_ascii=False)
     with FB_LOCK:
         c = fb_db()
@@ -949,6 +1003,7 @@ def fb_thread(uid, after=0):
         c.close()
     return {'messages': [_fb_msg(r) for r in rows]}
 def fb_admin_list():
+    _mod = fb_mod_load()
     c = fb_db()
     try:
         rows = c.execute('SELECT uid, MAX(id), COUNT(*), SUM(CASE WHEN author="player" AND seen=0 THEN 1 ELSE 0 END), MAX(ts) FROM fb GROUP BY uid ORDER BY MAX(id) DESC').fetchall()
@@ -956,8 +1011,8 @@ def fb_admin_list():
         for uid, mid, n, unseen, ts in rows:
             last = c.execute('SELECT * FROM fb WHERE id=?', (mid,)).fetchone()
             nm = c.execute('SELECT name, meta FROM fb WHERE uid=? AND author="player" AND name<>"" ORDER BY id DESC LIMIT 1', (uid,)).fetchone()
-            out.append({'uid': uid, 'name': (nm[0] if nm else ''), 'count': n, 'unseen': unseen or 0, 'ts': ts, 'last': _fb_msg(last)})
-        return {'threads': out}
+            out.append({'uid': uid, 'name': (nm[0] if nm else ''), 'count': n, 'unseen': unseen or 0, 'ts': ts, 'last': _fb_msg(last), 'muted': uid in _mod['muted']})
+        return {'threads': out, 'mod': {'all_muted': _mod['all_muted'], 'premod': _mod['premod']}}
     finally:
         c.close()
 def fb_admin_seen(uid):
@@ -965,6 +1020,80 @@ def fb_admin_seen(uid):
         c = fb_db()
         try: c.execute('UPDATE fb SET seen=1 WHERE uid=?', (uid,)); c.commit()
         finally: c.close()
+
+# одноразовые ссылки авто-входа в fb-admin: nonce -> срок годности; гасится при первом использовании
+FB_MAGIC_FILE = ROOT + '/data/fb_magic.json'
+def _fb_magic_load():
+    try:
+        with open(FB_MAGIC_FILE) as f: d = json.load(f)
+    except Exception:
+        d = {}
+    now = int(time.time())
+    return {k: v for k, v in d.items() if isinstance(v, int) and v > now}
+def _fb_magic_save(d):
+    tmp = FB_MAGIC_FILE + '.tmp'
+    with open(tmp, 'w') as f: json.dump(d, f)
+    os.replace(tmp, FB_MAGIC_FILE)
+def fb_magic_mint(ttl=2592000):
+    with FB_LOCK:
+        d = _fb_magic_load()
+        k = os.urandom(24).hex()
+        d[k] = int(time.time()) + int(ttl)
+        _fb_magic_save(d)
+    return k
+def fb_magic_consume(k):
+    if not k or not re.fullmatch(r'[0-9a-f]{48}', k): return None
+    with FB_LOCK:
+        d = _fb_magic_load()
+        if k not in d: return None
+        del d[k]; _fb_magic_save(d)
+    try: return open(FB_TOKEN_FILE).read().strip()
+    except Exception: return None
+
+# премодерация (JEV) + мьют чата: data/fb_mod.json {all_muted, muted:[uid...], premod}
+FB_MOD_FILE = ROOT + '/data/fb_mod.json'
+FB_MOD_DEFAULT = {'all_muted': False, 'muted': [], 'premod': True, 'translate': True}
+def fb_mod_load():
+    try:
+        with open(FB_MOD_FILE) as f: d = json.load(f)
+    except Exception:
+        d = {}
+    m = dict(FB_MOD_DEFAULT); m['muted'] = []
+    for k in FB_MOD_DEFAULT:
+        if k in d: m[k] = d[k]
+    if not isinstance(m.get('muted'), list): m['muted'] = []
+    return m
+def fb_mod_save(m):
+    tmp = FB_MOD_FILE + '.tmp'
+    with open(tmp, 'w') as f: json.dump(m, f, ensure_ascii=False)
+    os.replace(tmp, FB_MOD_FILE)
+def fb_premod_block(text):
+    # True = заблокировать (явный мусор/оскорбление без сути). Fail-open: при ошибке/таймауте пропускаем.
+    t = (text or '').strip()
+    if len(t) < 2: return False
+    try:
+        kf = ROOT + '/data/.jev_key'
+        key = open(kf if os.path.exists(kf) else '/root/.jev_key').read().strip()
+    except Exception:
+        return False
+    body = {'model': 'jev-latest',
+            'state': 'Сообщение игрока в чате поддержки мода DoW2:\n' + t[:2000],
+            'questions': {'mod': {'type': 'choice',
+                'instructions': 'Тестовый период, общение максимально свободное. ПРОПУСКАЙ всё осмысленное: болтовню, критику, подколы, грубость, оскорбления и МАТ, если это живая речь — эмоция, экспрессия, восхищение, возмущение, жалоба (примеры: «ахуенный мод», «бляя как бесит лаг», «какого хуя автоматч молчит», «говно-баланс», «разрабы ублюдки где фикс»). БЛОКИРУЙ ТОЛЬКО: (1) откровенный БЕСПОЛЕЗНЫЙ БРЕД — бессвязный набор слов или символов, случайная мешанина букв/цифр, спам или флуд без смысла, кракозябры; (2) политику. Сомневаешься — ПРОПУСКАЙ.',
+                'criteria': {'0': 'пропустить', '1': 'заблокировать'}}}}
+    try:
+        req = urllib.request.Request('https://api.typesafe.ai/v1/systemone', data=json.dumps(body).encode(),
+                                     headers={'content-type': 'application/json', 'authorization': 'Bearer ' + key})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            a = json.load(r).get('answers', {}).get('mod', {})
+        p1 = float((a.get('probabilities') or {}).get('1', 0) or 0)
+        blocked = str(a.get('choice', '0')) == '1' and p1 >= 0.6
+        if blocked: 
+            try: open(ROOT + '/data/fb_blocked.log', 'a').write('%d\t%s\n' % (int(time.time()), t[:500].replace(chr(10),' ')))
+            except Exception: pass
+        return blocked
+    except Exception:
+        return False
 
 class H(BaseHTTPRequestHandler):
     server_version = 'ladder'
@@ -1016,10 +1145,23 @@ class H(BaseHTTPRequestHandler):
                 with open(FB_DIR + '/' + fn, 'rb') as f: b = f.read()
                 self.send_response(200); self.send_header('Content-Type', 'image/' + fn.rsplit('.', 1)[1].replace('jpg', 'jpeg'))
                 self.send_header('Content-Length', str(len(b))); self.send_header('Cache-Control', 'private, max-age=86400'); self.end_headers(); self.wfile.write(b); return
+            if u.path == '/ladder/fb-login':
+                tok = fb_magic_consume(qs.get('k', [''])[0])
+                if not tok:
+                    return self.send_html('<meta charset=utf-8><body style="font:16px sans-serif;background:#0d0b09;color:#e6dccb;padding:40px">\u0421\u0441\u044b\u043b\u043a\u0430 \u043d\u0435\u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0442\u0435\u043b\u044c\u043d\u0430 \u0438\u043b\u0438 \u0443\u0436\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0430.</body>', cache=0)
+                self.send_response(302)
+                self.send_header('Location', '/ladder/fb-admin#token=' + urllib.parse.quote(tok, safe=''))
+                self.send_header('Cache-Control', 'no-store'); self.end_headers(); return
+            if u.path == '/ladder/api/fb/magic':
+                if not _fb_token_ok(qs.get('token', [''])[0]): return self.send(403, {'error': 'token'}, cache=0)
+                return self.send(200, {'ok': True, 'url': '/ladder/fb-login?k=' + fb_magic_mint()}, cache=0)
             if u.path == '/ladder/fb-admin':
                 try:
                     with open(os.path.dirname(os.path.abspath(__file__)) + '/fb_admin.html', 'rb') as f: return self.send_html(f.read(), cache=0)
                 except Exception: return self.send(500, {'error': 'page'})
+            if u.path == '/ladder/api/fb/mod':
+                if not _fb_token_ok(qs.get('token', [''])[0]): return self.send(403, {'error': 'token'}, cache=0)
+                return self.send(200, fb_mod_load(), cache=0)
             if u.path == '/ladder/api/fb/admin':
                 if not _fb_token_ok(qs.get('token', [''])[0]): return self.send(403, {'error': 'token'}, cache=0)
                 uid = qs.get('uid', [''])[0]
@@ -1046,6 +1188,16 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/ladder/api/fb/send': return self.send(200, fb_send(d), cache=0)
                 if not _fb_token_ok(d.get('token')): return self.send(403, {'error': 'token'}, cache=0)
                 d['name'] = 'Elite dev'; return self.send(200, fb_send(d, 'dev'), cache=0)
+            if u.path == '/ladder/api/fb/mod':
+                d = self._body()
+                if not _fb_token_ok(d.get('token')): return self.send(403, {'error': 'token'}, cache=0)
+                m = fb_mod_load(); st = d.get('set'); on = bool(d.get('on'))
+                if st == 'all_muted': m['all_muted'] = on
+                elif st == 'premod': m['premod'] = on
+                elif st == 'mute_uid':
+                    uu = _fb_uid(d.get('uid'))
+                    if uu: m['muted'] = [x for x in m['muted'] if x != uu] + ([uu] if on else [])
+                fb_mod_save(m); return self.send(200, {'ok': True, 'mod': m}, cache=0)
             d = self._body()
             if isinstance(d, dict): d['_ua'] = self.headers.get('User-Agent', '')
             steam = str(d.get('steam', ''))[:32]
@@ -1088,6 +1240,8 @@ def _c_mm_state(steam):
         if any(steam in m['host'] + m['guest'] for m in MM_PLAYING.values()): return 'match'
     return None
 community.MM_STATE = _c_mm_state
+community.PREMOD = fb_premod_block                   # JEV moderation for the common chat (same gate/policy as the feedback chat)
+community.MODFLAGS = fb_mod_load                     # {'premod', 'translate', ...} from data/fb_mod.json
 
 if __name__ == '__main__':
     threading.Thread(target=crawler, daemon=True).start()

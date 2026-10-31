@@ -32,6 +32,10 @@ MM_STATE = None                                     # ladder.py: steam -> 'searc
 ADMIN_OK = None                                     # ladder.py: admin token -> bool
 STATS = None                                        # ladder.py: steam -> 1v1 stats of the season for the profile
 ALIAS = None                                        # ladder.py: steam -> the name the ladder / Relic knows (a Steam profile without a name)
+PREMOD = None                                       # ladder.py: text -> True to block (JEV moderation, same as the feedback chat)
+MODFLAGS = None                                     # ladder.py: () -> {'premod': bool, 'translate': bool, ...}
+NANOGPT_MODEL = 'gemini-2.5-flash-lite'             # cheap, reliable two-way translator (ru<->en and any other language into both)
+CHAT_RULES_MSG = 'Не отправлено: сообщение не прошло модерацию (бессвязный текст или политика). Переформулируйте по делу.'
 LOCK = threading.Lock()
 PRESENCE = {}                                       # steam -> {'seen', 'state'}  (in memory: who is here now)
 RATE = {}                                           # steam -> [times of the last messages]
@@ -47,11 +51,61 @@ def db():
     c.execute('CREATE TABLE IF NOT EXISTS prof (steam TEXT PRIMARY KEY, name TEXT, avatar TEXT, ts INTEGER, banned INTEGER DEFAULT 0)')
     c.execute('CREATE TABLE IF NOT EXISTS msg (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, steam TEXT, text TEXT, ts INTEGER, deleted INTEGER DEFAULT 0)')
     c.execute('CREATE INDEX IF NOT EXISTS msg_room ON msg(room, id)')
+    for col in ('lang TEXT', 't_ru TEXT', 't_en TEXT'):   # one common stream, three language views: all=original, ru/en=translated copies
+        try: c.execute('ALTER TABLE msg ADD COLUMN ' + col)
+        except sqlite3.OperationalError: pass
     return c
 
 def _get(url, data=None, timeout=15):
     r = urllib.request.Request(url, data=data, headers={'User-Agent': 'EliteLadder/1.0'})
     with urllib.request.urlopen(r, timeout=timeout) as f: return f.read().decode('utf-8', 'replace')
+
+def _nanogpt_key():
+    for p in (ROOT + '/data/.nanogpt_key', '/root/.nanogpt_key'):
+        try:
+            k = open(p).read().strip()
+            if k: return k
+        except Exception: pass
+    return None
+
+TR_SYS = ('You translate player chat for a Dawn of War 2: Retribution "Elite" mod launcher (a Warhammer 40,000 RTS). '
+    'Return ONLY compact JSON: {"lang":"<ISO 639-1 code of the source>","ru":"<Russian>","en":"<English>"}. '
+    'If the source is Russian, "ru" is the original text verbatim; if English, "en" is the original verbatim; '
+    'for any other language translate into BOTH Russian and English. '
+    'Translate by MEANING, naturally, the way a player would actually say it - never word for word. '
+    'You know RTS and Warhammer 40k slang; render Russian community terms by sense: '
+    'ваха=Warhammer, культяпки/культисты=cultists, десы/марины=Space Marines, орки=Orks, эльдар=Eldar, тираниды=Tyranids, '
+    'имба=OP/imbalanced, нерф/баф=nerf/buff, автоматч/ам=automatch, каст=cast(ing), реплей=replay, абилка=ability, '
+    'кд=cooldown, ретрит=retreat, кайт/кайтить=kite/kiting, слот/свап=slot/swap, вайп=wipe, раш=rush, молитва=(cultist) prayer, лаунчер=launcher. '
+    'KEEP verbatim in BOTH versions - do not translate, expand or transliterate: game and esports abbreviations '
+    '(gg, wp, glhf, ez, afk, 1v1/2v2/3v3, apm, mu, vp, ucs, op), player names, map names, keybinds (alt+x, ctrl+x), '
+    'version numbers, file names, URLs and emoji. '
+    'Keep the tone, profanity and emoji; never censor, explain or add anything. '
+    'If there is nothing to translate (only emoji, numbers or symbols), put the original text in both.')
+
+def translate(text):
+    # -> (lang, ru, en). Fail-open to (None, text, text): a translator outage never blocks the chat.
+    t = (text or '').strip()
+    if not t: return (None, text, text)
+    key = _nanogpt_key()
+    if not key: return (None, text, text)
+    body = {'model': NANOGPT_MODEL, 'temperature': 0, 'max_tokens': 800,
+            'response_format': {'type': 'json_object'},
+            'messages': [{'role': 'system', 'content': TR_SYS}, {'role': 'user', 'content': t[:1000]}]}
+    try:
+        req = urllib.request.Request('https://nano-gpt.com/api/v1/chat/completions', data=json.dumps(body).encode(),
+                                     headers={'content-type': 'application/json', 'authorization': 'Bearer ' + key})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            c = json.load(r)['choices'][0]['message']['content']
+        try: o = json.loads(c)
+        except Exception:
+            m = re.search(r'\{.*\}', c, re.S); o = json.loads(m.group(0)) if m else {}
+        ru = (o.get('ru') or '').strip() or t
+        en = (o.get('en') or '').strip() or t
+        lang = ((o.get('lang') or '').strip().lower() or None)
+        return (lang[:8] if lang else None, ru, en)
+    except Exception as e:
+        log('translate-fail', err=str(e)[:80]); return (None, t, t)
 
 def profile(steam, refresh=False):
     with db() as c:
@@ -169,21 +223,37 @@ def online():
     out.sort(key=lambda u: u['name'].lower())
     return out
 
-def _msg(r):
-    p = profile(r[2])
-    return {'id': r[0], 'room': r[1], 'steam': r[2], 'name': p['name'], 'avatar': p['avatar'], 'text': r[3], 'ts': r[4]}
+def _msg(r, view):
+    p = profile(r[1])
+    return {'id': r[0], 'room': view, 'steam': r[1], 'name': p['name'], 'avatar': p['avatar'], 'text': r[2], 'ts': r[3]}
 
+# One common stream; the tab is only a language view. all = original text, ru/en = the translated copy
+# (COALESCE falls back to the original until a message is translated, so nothing ever shows blank).
+_VIEWCOL = {'all': 'text', 'ru': "COALESCE(NULLIF(t_ru,''), text)", 'en': "COALESCE(NULLIF(t_en,''), text)"}
+TR_WAIT = 30   # s: a translated tab waits this long for a message's translation, then shows the original
 def msgs(room, after):
-    room = room if room in ROOMS else 'all'
+    view = room if room in ROOMS else 'all'
+    col = _VIEWCOL[view]
     try: after = int(after)
     except Exception: after = 0
     with db() as c:
         if after > 0:
-            rows = c.execute('SELECT id, room, steam, text, ts FROM msg WHERE room=? AND id>? AND deleted=0 ORDER BY id LIMIT 200', (room, after)).fetchall()
+            rows = c.execute('SELECT id, steam, %s, ts, t_ru IS NULL FROM msg WHERE id>? AND deleted=0 ORDER BY id LIMIT 200' % col, (after,)).fetchall()
         else:
-            rows = c.execute('SELECT id, room, steam, text, ts FROM msg WHERE room=? AND deleted=0 ORDER BY id DESC LIMIT 1000', (room,)).fetchall()[::-1]   # the whole history at once (owner, 29.10)
-        dead = [r[0] for r in c.execute('SELECT id FROM msg WHERE room=? AND deleted=1 AND id>? ORDER BY id DESC LIMIT 50', (room, max(0, after - 500)))]
-    return {'room': room, 'msgs': [_msg(r) for r in rows], 'deleted': dead}
+            rows = c.execute('SELECT id, steam, %s, ts, t_ru IS NULL FROM msg WHERE deleted=0 ORDER BY id DESC LIMIT 1000' % col, ()).fetchall()[::-1]   # the whole history at once (owner, 29.10)
+        dead = [r[0] for r in c.execute('SELECT id FROM msg WHERE deleted=1 AND id>? ORDER BY id DESC LIMIT 50', (max(0, after - 500),))]
+    if view != 'all':      # 31.10.2026 (owner): the common tab shows a message at once, a translated tab when its translation is
+        now = time.time()  # there - the list stops at the first one still being translated, so the client's "after" never skips it
+        for i, r in enumerate(rows):
+            if r[4] and now - r[3] < TR_WAIT: rows = rows[:i]; break
+    return {'room': view, 'msgs': [_msg(r, view) for r in rows], 'deleted': dead}
+
+def _translate_later(mid, text):   # the message is already in the common tab; its ru/en copies follow
+    try: lang, t_ru, t_en = translate(text)
+    except Exception: lang, t_ru, t_en = None, text, text
+    try:
+        with db() as c: c.execute('UPDATE msg SET lang=?, t_ru=?, t_en=? WHERE id=?', (lang, t_ru or text, t_en or text, mid))
+    except Exception as e: log('translate-store-fail', err=str(e)[:80])
 
 def say(d):
     steam = _session(d.get('token'))
@@ -198,9 +268,20 @@ def say(d):
         if t and now - t[-1] < 1.5 or len(t) >= 20: return {'ok': False, 'error': 'too fast'}
         RATE[steam] = t + [now]
         PRESENCE.setdefault(steam, {'state': 'menu'})['seen'] = now
+    flags = {}
+    try: flags = MODFLAGS() if MODFLAGS else {}
+    except Exception: pass
+    if PREMOD and flags.get('premod', True):                      # JEV moderation, same gate as the feedback chat
+        try:
+            if PREMOD(text): return {'ok': False, 'error': CHAT_RULES_MSG}
+        except Exception: pass                                    # fail-open: a moderation outage never blocks the chat
+    later = flags.get('translate', True)                          # 31.10.2026: no waiting for the translation - stored at once
     with db() as c:
-        cur = c.execute('INSERT INTO msg(room, steam, text, ts) VALUES(?,?,?,?)', (room, steam, text, int(now)))
-    return {'ok': True, 'id': cur.lastrowid}
+        cur = c.execute('INSERT INTO msg(room, steam, text, ts, lang, t_ru, t_en) VALUES(?,?,?,?,?,?,?)',
+                        (room, steam, text, int(now), None, None if later else text, None if later else text))
+        mid = cur.lastrowid
+    if later: threading.Thread(target=_translate_later, args=(mid, text), daemon=True).start()
+    return {'ok': True, 'id': mid}
 
 def me(d):
     steam = _session(d.get('token'))

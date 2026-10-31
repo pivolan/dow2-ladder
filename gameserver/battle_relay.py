@@ -77,10 +77,21 @@ class Peer:
 class Session:
     def __init__(self, sid):
         self.sid, self.peers, self.next_idx, self.queue, self.ticker = sid, [], 1, [], None
+        self.by_pid = {}                                  # player id -> its number in this session
         self.started = time.time(); self.ticks = 0; self.turn_msgs = 0; self.late = 0; self.max_late = 0.0
 
     def join(self, p):
-        p.sess, p.idx = self, self.next_idx; self.next_idx += 1; self.peers.append(p)
+        # 30.10.2026: a number per PLAYER, not per connection - the host numbers the players itself in the order they came
+        # and a player who connects again (the same id) keeps the number; with a new number per connection the host's
+        # messages to the next newcomer went to a number nobody had, and every later guest of that lobby failed to join
+        old = [q for q in self.peers if q.pid == p.pid]
+        for q in old:
+            self.peers.remove(q)
+            try: q.w.close()
+            except Exception: pass
+        if p.pid in self.by_pid: p.idx = self.by_pid[p.pid]
+        else: p.idx = self.by_pid[p.pid] = self.next_idx; self.next_idx += 1
+        p.sess = self; self.peers.append(p)
 
     def leave(self, p):
         if p in self.peers: self.peers.remove(p)
@@ -132,7 +143,7 @@ def handle_msg(p, m, echo=True):
         sid = m[1:5]
         if p.sess is None:
             s = sessions.get(sid) or sessions.setdefault(sid, Session(sid))
-            s.join(p); p.pid = m[9:17]
+            p.pid = m[9:17]; s.join(p)
             log(ev='join', sid=int.from_bytes(sid, 'little'), idx=p.idx, peer=p.addr, pid=p.pid.hex(), members=len(s.peers))
         if echo: p.send(m)
         return
@@ -244,7 +255,7 @@ async def handle(r, w):
         compat = pre[:4] == b'DWR2'
         if compat: await asyncio.wait_for(r.readexactly(1), 15)
         rt = asyncio.ensure_future(reader())
-        if compat:
+        if True:   # 30.10.2026: a guest whose lobby is on another of our servers is passed on there in the strict mode (DWR1) too
             relic = (socket.inet_ntoa(pre[4:8]), int.from_bytes(pre[8:10], 'big'))
             held, answered, sid = [], [], None
             while sid is None and len(held) < 64:
@@ -264,9 +275,9 @@ async def handle(r, w):
                 break
             if away and sid not in sessions:
                 h = await find_peer(sid)
-                if h: await pass_on(q, w, p, h, held, answered, pre=b'DWR1' + pre[4:10])
-                else: await pass_on(q, w, p, relic, held, answered)
-                return
+                if h: await pass_on(q, w, p, h, held, answered, pre=b'DWR1' + pre[4:10]); return
+                if compat: await pass_on(q, w, p, relic, held, answered); return
+                # strict (DWR1) and none of ours has it: the lobby is on Relic - handled below ("mixed", Relay.dll explains)
             for m in held:
                 if m: handle_msg(p, m, echo=False)
         while True:

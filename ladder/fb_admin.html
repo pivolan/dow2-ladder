@@ -29,6 +29,11 @@ button { background:linear-gradient(#3a2a12,#22190c); color:var(--gold2); border
 .login { max-width:420px; margin:80px auto; display:flex; gap:8px; }
 .login input { flex:1; background:#0e0c09; color:var(--text); border:1px solid #5a4a2e; padding:8px; border-radius:4px; }
 .empty { color:var(--muted); padding:20px; }
+.modbar { display:flex; flex-wrap:wrap; gap:12px; padding:8px 14px; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); }
+.modbar label { display:flex; align-items:center; gap:5px; cursor:pointer; }
+.th { position:relative; }
+.mute { position:absolute; top:8px; right:8px; background:none; border:none; padding:2px 4px; font-size:15px; cursor:pointer; line-height:1; }
+.th .n { padding-right:26px; }
 @media (max-width:760px) { .wrap { grid-template-columns:1fr; } .list { max-height:35vh; } }
 </style>
 </head>
@@ -37,7 +42,8 @@ button { background:linear-gradient(#3a2a12,#22190c); color:var(--gold2); border
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => (s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-let token = localStorage.getItem('fbToken') || new URLSearchParams(location.hash.slice(1)).get('token') || '';
+let token = localStorage.getItem('fbToken') || '';
+(function(){ var h = new URLSearchParams(location.hash.slice(1)).get('token'); if (h) { token = h; try { localStorage.setItem('fbToken', h); } catch(e){} history.replaceState(null, '', location.pathname); } })();
 let cur = null;
 const api = (q) => fetch('/ladder/api/fb/admin?token=' + encodeURIComponent(token) + (q || ''), { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject(r.status));
 const when = ts => new Date(ts * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -48,19 +54,31 @@ function login() {
 }
 async function start() {
   try { await api(); } catch (e) { localStorage.removeItem('fbToken'); return login(); }
-  $('#app').innerHTML = '<div class="wrap"><div class="list"><h1>Отзывы из лаунчера</h1><div id="threads"></div></div>' +
+  $('#app').innerHTML = '<div class="wrap"><div class="list"><h1>Отзывы из лаунчера</h1><div id="mod" class="modbar"></div><div id="threads"></div></div>' +
     '<div class="chat"><div class="msgs" id="msgs"><div class="empty">Выберите переписку слева</div></div>' +
     '<div class="send"><textarea id="txt" placeholder="Ответ игроку (Ctrl+Enter — отправить)"></textarea><button id="snd">Ответить</button></div></div></div>';
   $('#snd').onclick = reply; $('#txt').onkeydown = e => { if (e.key === 'Enter' && e.ctrlKey) reply(); };
   loadThreads(); setInterval(loadThreads, 10000); setInterval(() => cur && openThread(cur, true), 10000);
 }
+function setMod(set, on, uid) {
+  return fetch('/ladder/api/fb/mod', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, set, on, uid }) }).then(r => r.json()).then(() => loadThreads());
+}
 async function loadThreads() {
-  const d = await api().catch(() => ({ threads: [] }));
+  const d = await api().catch(() => ({ threads: [], mod: {} }));
+  const mod = d.mod || {};
+  $('#mod').innerHTML =
+    `<label title="Не слать уведомления об ответах игроков в Telegram"><input type="checkbox" id="mAll" ${mod.all_muted ? 'checked' : ''}> замутить весь чат</label>` +
+    `<label title="Серверная проверка JEV: явный мусор/оскорбления не отправляются"><input type="checkbox" id="mPre" ${mod.premod ? 'checked' : ''}> премодерация (JEV)</label>`;
+  $('#mAll').onchange = e => setMod('all_muted', e.target.checked);
+  $('#mPre').onchange = e => setMod('premod', e.target.checked);
   $('#threads').innerHTML = d.threads.map(t => `<div class="th ${t.uid === cur ? 'on' : ''}" data-u="${esc(t.uid)}">
+    <button class="mute" data-mu="${esc(t.uid)}" data-on="${t.muted ? 1 : 0}" title="${t.muted ? 'Размутить игрока' : 'Замутить игрока (не слать его ответы в Telegram)'}">${t.muted ? '🔕' : '🔔'}</button>
     <div class="n">${esc(t.name || 'без имени')}${t.unseen ? `<span class="badge">${t.unseen}</span>` : ''}</div>
     <div class="u">${esc(t.uid.slice(0, 8))} · ${t.count} сообщ. · ${when(t.ts)}</div>
     <div class="x">${t.last.author === 'dev' ? '↩ ' : ''}${esc(t.last.text) || '🖼 картинка'}</div></div>`).join('') || '<div class="empty">Отзывов пока нет</div>';
   document.querySelectorAll('.th').forEach(el => el.onclick = () => openThread(el.dataset.u));
+  document.querySelectorAll('.mute').forEach(b => b.onclick = e => { e.stopPropagation(); setMod('mute_uid', b.dataset.on !== '1', b.dataset.mu); });
 }
 async function openThread(uid, quiet) {
   cur = uid; const d = await api('&uid=' + encodeURIComponent(uid)).catch(() => ({ messages: [] }));
