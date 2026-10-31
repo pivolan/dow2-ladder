@@ -894,7 +894,8 @@ def live_view():
                      for p in sorted(MM.values(), key=lambda p: p['ts']) if p['state'] == 'searching' and p['steam'] not in busy]
     busy |= {p['steam'] for p in searching}
     launcher = [{'steam': s, 'state': st} for s, st in users.in_launcher(now) if s not in busy]
-    return {'searching': searching, 'ingame': ingame, 'launcher': launcher,
+    # now: the server's clock, so a launcher whose PC clock is off still counts the minutes right
+    return {'now': int(now), 'searching': searching, 'ingame': ingame, 'launcher': launcher,
             'users': {s: users.card(s) for s in sorted(busy | {p['steam'] for p in launcher})}}
 
 def mm_leave(steam):
