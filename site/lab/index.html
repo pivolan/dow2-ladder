@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Elite Lab — experiments</title>
-<meta name="description" content="Experimental add-ons and tools for Elite Mod (Dawn of War II: Retribution): lobby rating and host filter, diagnostics, stats, replay analysis.">
+<meta name="description" content="Experimental add-ons and tools for Elite Mod (Dawn of War II: Retribution): automatch, our game servers, lobby rating, timers, patches for vanilla DoW2, stats, replay analysis.">
 <style>
 @font-face { font-family: Cinzel; src: url(../fonts/cinzel-700.ttf); font-weight: 700; font-display: swap; }
 @font-face { font-family: Cinzel; src: url(../fonts/cinzel-900.ttf); font-weight: 900; font-display: swap; }
@@ -52,6 +52,12 @@ ol.steps { margin: 0; padding-left: 22px; }
 ol.steps li { margin-bottom: 8px; }
 footer { padding: 30px 0 50px; color: var(--muted); font-size: 15px; text-align: center; }
 @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } .hero { padding: 40px 0 26px; } }
+.sub { margin: -6px 0 20px; color: var(--muted); font-size: 16px; max-width: 820px; }
+.b-exp { background: var(--red-2); color: #fff3df; }
+.card.exp { border-color: #6b2a1c; }
+.center { justify-content: center; margin-top: 24px; }
+.jump { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+#vanilla { background: #120f0b; }
 </style>
 </head>
 <body>
@@ -63,59 +69,104 @@ footer { padding: 30px 0 50px; color: var(--muted); font-size: 15px; text-align:
 <header class="hero"><div class="wrap">
   <div class="kicker" data-i="kick">Elite Lab</div>
   <h1 data-i="h1">Experiments</h1>
-  <p class="lead" data-i="lead">Add-ons and tools we are testing with the community. Easiest way: install the launcher and tick them in “Add-ons” — they update themselves. Or download each one below.</p>
-  <div class="warn" data-i="warn">These are prototypes made by a community member, not by the Elite team. If the game crashes, press “Send logs” in the launcher before starting the game again.</div>
+  <p class="lead" data-i="lead">Add-ons and tools we are testing with the community. Easiest way: install the launcher and tick them in “Add-ons” — they update themselves and are all off until you turn them on. For vanilla DoW2 without the launcher there are packages below.</p>
+  <div class="jump"><a class="btn" href="#elite" data-i="j_elite">Elite (launcher) ↓</a><a class="btn main" href="#vanilla" data-i="j_van">Vanilla DoW2 ↓</a></div>
+  <div class="warn" data-i="warn">These are prototypes made by a community member, not by the Elite team. Use them at your own risk. If the game crashes, press “Send logs” in the launcher before starting the game again.</div>
 </div></header>
 
-<section><div class="wrap">
-  <h2 data-i="h_addons">In-game add-ons</h2>
+<section id="elite"><div class="wrap">
+  <h2 data-i="h_addons">In the launcher (Elite)</h2>
+  <p class="sub" data-i="addons_sub">Launcher → “Add-ons” → tick the ones you want. Each add-on is a separate file: switched off, it is not loaded at all.</p>
   <div class="cards">
     <div class="card">
-      <h3>LobbyStats <span class="ver">v0.7.0</span> <span class="badge b-test" data-i="b_test">test</span></h3>
-      <p data-i="ls_p">Relic rating next to every name in the lobby, a tooltip with win rate, games and Steam hours. Only shows information, never kicks anyone.</p>
-      <ul>
-        <li data-i="ls_1">Rating next to the name: <code>pivolan [2061]</code></li>
-        <li data-i="ls_2">Hover a player: rating, win rate, wins/losses, games, Steam hours</li>
-      </ul>
-      <div class="btns">
-        <a class="btn main" href="dl/LobbyStats-0.7.0.zip" data-i="dl_zip">Download .zip</a>
-        <a class="btn" href="/stats/" data-i="ls_web">Stats on the web</a>
-      </div>
+      <h3><span data-i="mm_h">Automatch</span> <span class="ver">mmfind-0.32</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="mm_p">One-button matchmaking: Multiplayer → Find a Game → Start Searching. 1v1 / 2v2 / 3v3 and your maps in Map Preferences; “Watch a match” joins the next game as an observer. The game is created and joined for you; Cancel dissolves the found match for everyone.</p>
+      <small data-i="mm_s">Every player in the match needs it. Queue and live matches: <a href="/ladder/">ladder</a></small>
     </div>
     <div class="card">
-      <h3>FrameProbe <span class="ver">v9</span> <span class="badge b-diag" data-i="b_diag">diagnostics</span></h3>
-      <p data-i="fp_p">Developer logs: what slows the game down when you spectate, and what the game sees when you press Continue after a match. Doesn't change the game.</p>
-      <ul>
-        <li data-i="fp_1">Observer: FPS, frame times, simulation ticks every 10 seconds</li>
-        <li data-i="fp_2">Continue: state of the score screen at the moment of the click</li>
-        <li data-i="fp_3">v8: no crashes at start or on Continue after a replay</li>
-      </ul>
-      <div class="btns">
-        <a class="btn main" href="dl/FrameProbe-v9.zip" data-i="dl_zip">Download .zip</a>
-      </div>
+      <h3><span data-i="rl_h">Our game servers</span> <span class="ver">relay-14</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="rl_p">Matches go through our servers (Poland, Germany or Moscow) instead of Relic's in the USA: much lower delay.</p>
+      <small data-i="rl_s">Works when everyone in the match has it on.</small>
     </div>
     <div class="card">
-      <h3>ObsFix <span class="ver">v1</span> <span class="badge b-test" data-i="b_test">test</span></h3>
-      <p data-i="of_p">Fix for observer lag: while spectating a live game the game rebuilt the whole match info dozens of times per frame just to find its own slot. ObsFix remembers the answer.</p>
-      <ul><li data-i="of_1">Live spectating only; players and replays are not affected</li><li data-i="of_2">Off by default in the launcher — tick it, spectate, send logs</li></ul>
-      <div class="btns"><a class="btn main" href="dl/ObsFix-v1.zip" data-i="dl_zip">Download .zip</a></div>
+      <h3><span data-i="ls_h">Lobby rating</span> <span class="ver">0.10.0</span> <span class="badge b-ok" data-i="b_ok">works</span></h3>
+      <p data-i="ls_p">Relic rating next to each player in the lobby; on hover — win rate, games and Steam hours. Only shows information, never kicks anyone.</p>
+      <small data-i="ls_s">Works alone, in any lobby.</small>
+    </div>
+    <div class="card">
+      <h3><span data-i="lr_h">Ratings on the loading screen</span> <span class="ver">loadingratings-2</span> <span class="badge b-ok" data-i="b_ok">works</span></h3>
+      <p data-i="lr_p">The Relic rating after each player's name on the loading screen of an online match.</p>
+    </div>
+    <div class="card">
+      <h3><span data-i="mt_h">Match timer</span> <span class="ver">matchtimer-5</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="mt_p">Match time (minutes:seconds of game time) next to the Menu button.</p>
+    </div>
+    <div class="card">
+      <h3><span data-i="cd_h">Cooldown seconds</span> <span class="ver">cooldowns-2</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="cd_p">Seconds left on recharging abilities and global abilities, in the middle of the button.</p>
+    </div>
+    <div class="card">
+      <h3><span data-i="rv_h">Reverse</span> <span class="ver">reverse-4</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="rv_p">Like Company of Heroes: hold Ctrl and right-click behind your vehicles (or on the minimap) — they back off driving backwards, front armour to the enemy, instead of turning around.</p>
+      <small data-i="rv_s">Uses the game's own orders, nothing changes for the other players.</small>
+    </div>
+    <div class="card">
+      <h3><span data-i="of_h">Observer lag fix</span> <span class="ver">obsfix-1</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="of_p">Spectating a live game no longer rebuilds the whole match info dozens of times per frame — live spectating runs as smoothly as a replay.</p>
+    </div>
+    <div class="card exp">
+      <h3><span data-i="np_h">Connection check</span> <span class="ver">netprobe-2</span> <span class="badge b-exp" data-i="b_exp">experiment</span></h3>
+      <p data-i="np_p">Nothing in the game changes: 15 s after the game starts it checks for 1–2 minutes in the background what gets through from your computer to our servers (TCP and UDP on several ports, ~5 MB) and sends the result to us by itself.</p>
+      <small data-i="np_s">Pure experiment, at your own risk. Test alone: tick it, start the game, wait 2 minutes in the menu. Helps us make our servers work where the connection gets cut on the way (Russia, Ukraine).</small>
+    </div>
+  </div>
+  <div class="btns center">
+    <a class="btn main" href="../dl/EliteLauncher-1.3.14-setup.exe" data-i="la_win">Launcher for Windows</a>
+    <a class="btn" href="../dl/EliteLauncher-1.3.14-windows-portable.zip" data-i="la_port">Windows portable</a>
+    <a class="btn" href="../dl/EliteLauncher-1.3.14.AppImage">Linux</a>
+    <a class="btn" href="../dl/EliteLauncher-1.3.14-mac.zip">macOS</a>
+  </div>
+</div></section>
+
+<section id="vanilla"><div class="wrap">
+  <h2 data-i="h_van">For vanilla DoW2 (no launcher)</h2>
+  <p class="sub" data-i="van_sub">Unpack into the game folder next to DOW2.exe: you get <code>winmm.dll</code> and the <code>dow2-patches</code> folder. <code>winmm.dll</code> is a small loader: it loads every .dll from <code>dow2-patches</code>, so the packages can be combined — if you already have it, copy only the new .dll into <code>dow2-patches</code>. Game files are not changed; to remove, delete <code>winmm.dll</code> and the folder.</p>
+  <div class="cards">
+    <div class="card">
+      <h3><span data-i="amv_h">Automatch and our servers</span> <span class="ver">MMFind 0.33 + Relay 15</span> <span class="badge b-test" data-i="b_test">test</span></h3>
+      <p data-i="amv_p">Find a Game works again in vanilla: Multiplayer → Find a Game → Start Searching. 1v1 / 2v2 / 3v3 and maps as usual; the game is created and joined for you, Cancel dissolves a found match for everyone. Matches run through our server (Poland or Germany — the lower delay for everyone), not Relic's in the USA; normal lobbies too go through our server nearest to you, with anybody.</p>
+      <small data-i="amv_s">Only vanilla players with this package are matched, never mixed with Elite. Queue and matches: <a href="/ladder/">ladder</a></small>
+      <div class="btns"><a class="btn main" href="dl/Automatch_vanilla.zip" data-i="dl_zip">Download .zip</a></div>
+    </div>
+    <div class="card exp">
+      <h3><span data-i="srv_h">Our game servers</span> <span class="ver">Relay 15</span> <span class="badge b-exp" data-i="b_exp">experiment</span></h3>
+      <p data-i="srv_p">Online games through our servers (Poland, Germany, Moscow) instead of Relic's in the USA. Three variants, install one: <b>compatible</b> — only automatches go through our server, every other game on Relic, play with anybody; <b>normal</b> — every online game, Custom Games too, on our servers: everyone in the lobby needs the same package, otherwise the game closes with an error; <b>with anybody</b> — every game still on Relic, but through our server nearest to you: for those whose connection to Relic is cut or lags.</p>
+      <small data-i="srv_s">Test, at your own risk. Experiment: UDP=1 in Relay.ini sends the game to our server over UDP (when TCP gets cut on the way). The automatch package already includes the compatible variant.</small>
+      <div class="btns"><a class="btn main" href="dl/Servers_vanilla_compat.zip" data-i="srv_c">Compatible .zip</a><a class="btn" href="dl/Servers_vanilla_strict.zip" data-i="srv_n">Normal (ours only) .zip</a><a class="btn" href="dl/Servers_vanilla_bridge.zip" data-i="srv_b">With anybody .zip</a></div>
+    </div>
+    <div class="card">
+      <h3><span data-i="rf_h">Auto-reinforce after webway gates</span> <span class="ver">ReinforceFix v1</span> <span class="badge b-ok" data-i="b_ok">works</span></h3>
+      <p data-i="rf_p">A squad with auto-reinforce on that goes through an Eldar webway gate no longer comes out with auto-reinforce switched off.</p>
+      <small data-i="rf_s">Only the interface changes, no desync; your opponents don't need it.</small>
+      <div class="btns"><a class="btn main" href="dl/ReinforceFix_vanilla.zip" data-i="dl_zip">Download .zip</a></div>
+    </div>
+    <div class="card exp">
+      <h3><span data-i="npv_h">Connection check</span> <span class="ver">NetProbe 2</span> <span class="badge b-exp" data-i="b_exp">experiment</span></h3>
+      <p data-i="npv_p">The same check as in the launcher: start the game, wait 2 minutes in the menu — the result is sent to us by itself (only the check and your Steam ID).</p>
+      <small data-i="npv_s">Pure experiment, at your own risk. It runs at every game start, so remove NetProbe.dll after the test.</small>
+      <div class="btns"><a class="btn main" href="dl/NetProbe_vanilla.zip" data-i="dl_zip">Download .zip</a></div>
+    </div>
+    <div class="card">
+      <h3><span data-i="all_h">Set: observer fix + lobby rating + auto-reinforce</span> <span class="badge b-ok" data-i="b_ok">works</span></h3>
+      <p data-i="all_p">ObsFix, LobbyStats and ReinforceFix in one archive, with settings files (<code>.ini</code>) for each.</p>
+      <div class="btns"><a class="btn main" href="dl/DoW2-patches.zip" data-i="dl_zip">Download .zip</a></div>
     </div>
   </div>
 </div></section>
 
 <section><div class="wrap">
-  <h2 data-i="h_tools">Launcher and web tools</h2>
+  <h2 data-i="h_tools">Web tools</h2>
   <div class="cards">
-    <div class="card">
-      <h3>Elite Launcher <span class="ver">1.2.4</span> <span class="badge b-ok" data-i="b_ok">works</span></h3>
-      <p data-i="la_p">Installs Elite, switches between main, beta and archive versions, installs the add-ons above with one tick, and sends logs to the developer with one button.</p>
-      <div class="btns">
-        <a class="btn main" href="../dl/EliteLauncher-1.3.4-setup.exe">Windows</a>
-        <a class="btn" href="../dl/EliteLauncher-1.3.4-windows-portable.zip" data-i="la_port">Windows portable</a>
-        <a class="btn" href="../dl/EliteLauncher-1.3.4.AppImage">Linux</a>
-        <a class="btn" href="../dl/EliteLauncher-1.3.4-mac.zip">macOS</a>
-      </div>
-    </div>
     <div class="card">
       <h3 data-i="st_h">Player stats</h3>
       <p data-i="st_p">Relic rating, win rate by race and recent matches of any Elite player — the same data the lobby add-on shows.</p>
@@ -126,51 +177,67 @@ footer { padding: 30px 0 50px; color: var(--muted); font-size: 15px; text-align:
       <p data-i="rp_p">Upload a .rec file and get a report: build orders, army, key moments, and a short story of the match.</p>
       <div class="btns"><a class="btn main" href="/replay/" data-i="open">Open</a></div>
     </div>
+    <div class="card">
+      <h3 data-i="ld_h">Automatch queue</h3>
+      <p data-i="ld_p">Who is searching right now, live matches and the common chat of the launcher.</p>
+      <div class="btns"><a class="btn main" href="/ladder/" data-i="open">Open</a></div>
+    </div>
+    <div class="card">
+      <h3 data-i="dv_h">Development</h3>
+      <p data-i="dv_p">What we are working on right now and what comes next.</p>
+      <div class="btns"><a class="btn main" href="../dev/" data-i="open">Open</a></div>
+    </div>
   </div>
 </div></section>
 
-<section><div class="wrap">
-  <h2 data-i="h_manual">Install an add-on by hand</h2>
-  <ol class="steps">
-    <li data-i="m1">Put the .dll from the zip into <code>&lt;Steam&gt;\steamapps\common\Dawn of War II - Retribution\Elite_DLLs\</code></li>
-    <li data-i="m2">Open <code>Elite.launchconfig</code> in the same game folder with Notepad and add <code>, LobbyStats.dll</code> (or <code>, FrameProbe.dll</code>) to the end of the <code>InjectedFiles=</code> line.</li>
-    <li data-i="m3">Start Elite as usual. The add-on writes its log next to the dll; the first line shows its version.</li>
-  </ol>
-</div></section>
-
-<footer><div class="wrap" data-i="ft">Community prototypes. Elite Mod is made by the Elite team; this page is not theirs. Dawn of War II is a trademark of Games Workshop, Relic Entertainment and SEGA.</div></footer>
+<footer><div class="wrap" data-i="ft">Community prototypes. Elite Mod is made by the Elite team; this page is not theirs. Source code: <a href="https://github.com/dow2-launcher/Dow2-patches">Dow2-patches</a>. Dawn of War II is a trademark of Games Workshop, Relic Entertainment and SEGA.</div></footer>
 
 <script>
 var RU = {
   back: "← Elite Launcher", kick: "Elite Lab", h1: "Эксперименты",
-  lead: "Дополнения и инструменты, которые мы проверяем вместе с сообществом. Проще всего — поставить лаунчер и отметить их галочками в «Дополнениях»: они обновляются сами. Или скачать каждое по отдельности ниже.",
-  warn: "Это прототипы участника сообщества, не команды Elite. Если игра вылетела — нажмите «Отправить логи» в лаунчере до следующего запуска игры.",
-  h_addons: "Дополнения для игры", b_test: "тест", b_diag: "диагностика", b_ok: "работает",
-  ls_p: "Рейтинг Relic рядом с каждым ником в лобби, подсказка с винрейтом, числом игр и часами в Steam. Только показывает, никого не кикает.",
-  ls_1: "Рейтинг рядом с ником: <code>pivolan [2061]</code>",
-  ls_2: "Наведи на игрока: рейтинг, винрейт, победы/поражения, игры, часы в Steam",
-  dl_zip: "Скачать .zip", ls_web: "Статистика на сайте",
-  fp_p: "Логи для разработчика: из-за чего тормозит игра в режиме обсервера и что видит игра при нажатии Continue после матча. Игру не меняет.",
-  fp_1: "Обсервер: FPS, время кадров, тики симуляции каждые 10 секунд",
-  fp_2: "Continue: состояние экрана итогов в момент нажатия",
-  fp_3: "v8: не вылетает ни при запуске, ни на «Продолжить» после реплея",
-  h_tools: "Лаунчер и веб-инструменты",
-  la_p: "Ставит Elite, переключает основную, бету и архивные версии, ставит дополнения выше одной галочкой и отправляет логи разработчику одной кнопкой.",
-  la_port: "Windows без установки",
+  lead: "Дополнения и инструменты, которые мы проверяем вместе с сообществом. Проще всего — поставить лаунчер и отметить их галочками в «Дополнениях»: они обновляются сами и выключены, пока вы их не включите. Для ванильной DoW2 без лаунчера — пакеты ниже.",
+  warn: "Это прототипы участника сообщества, не команды Elite. Используйте на свой страх и риск. Если игра вылетела — нажмите «Отправить логи» в лаунчере до следующего запуска игры.",
+  h_addons: "В лаунчере (Elite)",
+  addons_sub: "Лаунчер → «Дополнения» → отметьте нужные. Каждое дополнение — отдельный файл: выключенное вообще не загружается.",
+  b_test: "тест", b_ok: "работает", b_exp: "эксперимент",
+  mm_h: "Автоматч", mm_p: "Поиск матча одной кнопкой: Мультиплеер → Find a Game → Start Searching. Режим 1v1 / 2v2 / 3v3 и карты — в Map Preferences; «Watch a match» — зайти наблюдателем в ближайший матч. Игра создаётся и подключается сама; кнопка «Отмена» распускает найденный матч у всех.",
+  mm_s: "Нужно всем игрокам матча. Очередь и матчи: <a href=\"/ladder/\">ладдер</a>",
+  rl_h: "Свои игровые серверы", rl_p: "Матчи идут через наши серверы (Польша, Германия или Москва), а не через серверы Relic в США: задержка намного меньше.",
+  rl_s: "Работает, когда галочка включена у всех игроков матча.",
+  ls_h: "Рейтинг в лобби", ls_p: "Рейтинг Relic у каждого игрока в лобби; при наведении — винрейт, число игр и часы в Steam. Только показывает, никого не кикает.",
+  ls_s: "Работает в одиночку, в любом лобби.",
+  lr_h: "Рейтинги на экране загрузки", lr_p: "Рейтинг Relic после имени каждого игрока на экране загрузки онлайн-матча.",
+  mt_h: "Таймер матча", mt_p: "Время матча (минуты:секунды игрового времени) рядом с кнопкой Menu.",
+  cd_h: "Секунды перезарядки", cd_p: "Сколько секунд осталось до готовности способности и глобальной способности — в центре кнопки.",
+  rv_h: "Задний ход", rv_p: "Как в Company of Heroes: зажмите Ctrl и щёлкните правой кнопкой позади техники (или по миникарте) — она отходит задом, лобовой бронёй к врагу, а не разворачивается.",
+  rv_s: "Работает через обычные приказы игры, для остальных игроков ничего не меняется.",
+  of_h: "Исправление тормозов обсервера", of_p: "Обсервер больше не пересобирает всю информацию о матче десятки раз за кадр — живая игра обсом идёт так же плавно, как реплей.",
+  np_h: "Проверка связи", np_p: "В игре ничего не меняется: через 15 секунд после запуска игры 1–2 минуты в фоне проверяет, что доходит с вашего компьютера до наших серверов (TCP и UDP на нескольких портах, ~5 МБ), и сам присылает нам результат.",
+  np_s: "Чистый эксперимент, на свой страх и риск. Проверять одному: поставить галочку, запустить игру, подождать 2 минуты в меню. Помогает сделать наши серверы рабочими там, где связь режется по дороге (Россия, Украина).",
+  j_elite: "Elite (лаунчер) ↓", j_van: "Ванильная DoW2 ↓",
+  la_win: "Лаунчер для Windows", la_port: "Windows без установки",
+  h_van: "Для ванильной DoW2 (без лаунчера)",
+  van_sub: "Распакуйте в папку игры рядом с DOW2.exe: появятся <code>winmm.dll</code> и папка <code>dow2-patches</code>. <code>winmm.dll</code> — маленький загрузчик: он подгружает все .dll из <code>dow2-patches</code>, поэтому пакеты можно совмещать — если он уже стоит, достаточно положить новую .dll в <code>dow2-patches</code>. Файлы игры не меняются; удалить — стереть <code>winmm.dll</code> и папку.",
+  amv_h: "Автоматч и наши серверы", amv_p: "В ванили снова работает Find a Game: Мультиплеер → Find a Game → Start Searching. 1v1 / 2v2 / 3v3 и карты как обычно; игра создаётся и подключается сама, «Отмена» распускает найденный матч у всех. Матчи идут через наш сервер (Польша или Германия — где у всех меньше задержка), а не через Relic в США; обычные лобби тоже идут через ближайший к вам наш сервер, с кем угодно.",
+  amv_s: "Сводит только игроков ванилы с этим пакетом, с Elite не смешивает. Очередь и матчи: <a href=\"/ladder/\">ладдер</a>",
+  srv_h: "Наши игровые серверы", srv_p: "Сетевые игры через наши серверы (Польша, Германия, Москва), а не через Relic в США. Три варианта, ставить один: <b>совместимый</b> — через наш сервер только автоматч, остальные игры через Relic, играть можно с кем угодно; <b>обычный</b> — все сетевые игры, и Custom Games тоже, через наши серверы: у всех в лобби должен стоять такой же пакет, иначе игра закроется с ошибкой; <b>с кем угодно</b> — все игры по-прежнему на Relic, но через ближайший к вам наш сервер: для тех, у кого связь с Relic режется или лагает.",
+  srv_s: "Тест, на свой страх и риск. Эксперимент: UDP=1 в Relay.ini — до нашего сервера игра идёт по UDP (если TCP режется по дороге). В пакете автоматча совместимый вариант уже есть.", srv_c: "Совместимый .zip", srv_n: "Обычный (только наши) .zip", srv_b: "С кем угодно .zip",
+  rf_h: "Автопополнение после вебвей-ворот", rf_p: "Отряд с включённым автопополнением, прошедший через вебвей-ворота эльдар, больше не выходит из них с выключенным автопополнением.",
+  rf_s: "Меняется только интерфейс, рассинхрона нет; соперникам ставить не нужно.",
+  npv_h: "Проверка связи", npv_p: "Та же проверка, что в лаунчере: запустить игру, подождать 2 минуты в меню — результат уйдёт нам сам (только проверка и ваш Steam ID).",
+  npv_s: "Чистый эксперимент, на свой страх и риск. Запускается при каждом старте игры, поэтому после теста удалите NetProbe.dll.",
+  all_h: "Набор: обсервер + рейтинг в лобби + автопополнение", all_p: "ObsFix, LobbyStats и ReinforceFix одним архивом, с файлами настроек (<code>.ini</code>) для каждого.",
+  dl_zip: "Скачать .zip",
+  h_tools: "Веб-инструменты",
   st_h: "Статистика игроков", st_p: "Рейтинг Relic, винрейт по расам и последние матчи любого игрока Elite — те же данные, что показывает дополнение в лобби.",
   rp_h: "Разбор реплеев", rp_p: "Загрузите файл .rec и получите отчёт: билды, армия, ключевые моменты и короткая история матча.",
+  ld_h: "Очередь автоматча", ld_p: "Кто ищет игру прямо сейчас, идущие матчи и общий чат лаунчера.",
+  dv_h: "Разработка", dv_p: "Над чем работаем сейчас и что дальше.",
   open: "Открыть",
-  of_p: "Исправление тормозов обсервера: при просмотре живой игры игра десятки раз за кадр пересобирала всю информацию о матче, только чтобы найти свой слот. ObsFix запоминает ответ.",
-  of_1: "Только живой просмотр обсом; игроков и реплеи не затрагивает",
-  of_2: "В лаунчере выключено по умолчанию — включи, посмотри обсом, отправь логи",
-  h_manual: "Поставить дополнение вручную",
-  m1: "Положите .dll из архива в <code>&lt;Steam&gt;\\steamapps\\common\\Dawn of War II - Retribution\\Elite_DLLs\\</code>",
-  m2: "Откройте <code>Elite.launchconfig</code> в той же папке игры Блокнотом и допишите <code>, LobbyStats.dll</code> (или <code>, FrameProbe.dll</code>) в конец строки <code>InjectedFiles=</code>.",
-  m3: "Запустите Elite как обычно. Дополнение пишет лог рядом с dll; в первой строке — его версия.",
-  ft: "Прототипы от сообщества. Elite Mod делает команда Elite; эта страница не их. Dawn of War II — торговая марка Games Workshop, Relic Entertainment и SEGA."
+  ft: "Прототипы от сообщества. Elite Mod делает команда Elite; эта страница не их. Исходный код: <a href=\"https://github.com/dow2-launcher/Dow2-patches\">Dow2-patches</a>. Dawn of War II — торговая марка Games Workshop, Relic Entertainment и SEGA."
 };
 var EN = {};
-document.querySelectorAll("[data-i]").forEach(function (e) { EN[e.dataset.i] = e.innerHTML; });
+document.querySelectorAll("[data-i]").forEach(function (e) { if (!(e.dataset.i in EN)) EN[e.dataset.i] = e.innerHTML; });
 function setLang(l) {
   var d = l === "ru" ? RU : EN;
   document.querySelectorAll("[data-i]").forEach(function (e) { if (d[e.dataset.i] != null) e.innerHTML = d[e.dataset.i]; });
