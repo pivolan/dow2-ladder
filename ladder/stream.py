@@ -5,11 +5,11 @@
 #
 # Every event: "event: <name>\ndata: <JSON on one line>\n\n". A ": ping" comment every 20 s keeps the connection (and the
 # presence of the signed-in player) alive. A subscriber that falls 1000 events behind is dropped: it reconnects and gets
-# a new snapshot. At most 5 connections per IP and 1000 in all, else 503 with "retry: 30000".
+# a new snapshot. At most 1000 connections in all, else 503 with "retry: 30000" (no per-IP limit: owner 01.11.2026 - LAN
+# parties, carrier NAT and everyone behind the Moscow mirror dow2ru share one address).
 import json, queue, threading, time
 
 PING = 20
-MAX_PER_IP = 5
 MAX_ALL = 1000
 LIVE = None                                         # ladder.py: live_view() - the Online block from memory
 LOCK = threading.Lock()
@@ -32,7 +32,7 @@ def publish(event, data, to=None):
 
 def _subscribe(ip, steam):
     with LOCK:
-        if len(SUBS) >= MAX_ALL or sum(1 for s in SUBS if s.ip == ip) >= MAX_PER_IP: return None
+        if len(SUBS) >= MAX_ALL: return None
         s = Sub(ip, steam); SUBS.add(s); return s
 
 def serve(h, ip, steam, seen, missed, me):
