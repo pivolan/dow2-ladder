@@ -21,10 +21,13 @@ our other servers (RELAY_PEERS) that has the session, else to the Relic relay it
 the add-on). A guest is told apart by its first peer announce "13 00 .. 0f 05" (it doesn't know its number yet).
 Until then hello and ping are answered right away (as Relic would) and the rest is held; when passing on, what the
 peer sent goes first and the answers we already gave are not repeated. Servers ask each other "DWRQ" + sid -> Y/N.
+Bridge (DWR3, Relay.dll 15, 01.11.2026): "DWR3" + IPv4 + port of the Relic relay - the player plays on Relic (with anybody)
+and we only carry the connection: everything is passed on to that Relic relay at once, nothing is hosted here. For players
+whose own path to Relic is bad or cut on the way (Russia: DPI on foreign hosting) - the server near them carries it.
 Usage: battle_relay.py [port] [bind]   (default 47100 127.0.0.1)
 Peers silent for IDLE seconds are dropped (the game pings every ~3 s).
 """
-import asyncio, json, os, socket, struct, sys, time
+import asyncio, ipaddress, json, os, socket, struct, sys, time
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 47100
 BIND = sys.argv[2] if len(sys.argv) > 2 else '127.0.0.1'
@@ -202,7 +205,7 @@ async def pass_on(q, w, p, dest, held, answered, pre=b''):
         log(ev='pass_fail', peer=p.addr, dest=f'{dest[0]}:{dest[1]}', err=repr(e)); return
     try: uw.get_extra_info('socket').setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     except Exception: pass
-    log(ev='pass_on', peer=p.addr, dest=f'{dest[0]}:{dest[1]}', to='ours' if pre else 'relic', held=len(held))
+    log(ev='pass_on', peer=p.addr, dest=f'{dest[0]}:{dest[1]}', to='ours' if pre else ('relic' if held else 'relic_bridge'), held=len(held))
     if pre: uw.write(pre)
     for m in held: uw.write(len(m).to_bytes(2, 'big') + m)
     await uw.drain()
@@ -251,6 +254,13 @@ async def handle(r, w):
             sid = await asyncio.wait_for(r.readexactly(4), 5)
             w.write(b'Y' if sid in sessions else b'N'); await w.drain(); w.close(); return
         pre += await asyncio.wait_for(r.readexactly(6), 15)
+        if pre[:4] == b'DWR3':                    # bridge: straight on to the Relic relay the game wanted
+            dest = (socket.inet_ntoa(pre[4:8]), int.from_bytes(pre[8:10], 'big'))
+            ip = ipaddress.ip_address(dest[0])          # only Relic relay ports on public addresses: not an open proxy
+            if not 27000 <= dest[1] <= 27099 or not ip.is_global:
+                log(ev='bridge_refused', peer=p.addr, dest=f'{dest[0]}:{dest[1]}'); w.close(); return
+            rt = asyncio.ensure_future(reader())
+            await pass_on(q, w, p, dest, [], []); return
         if pre[:4] not in (b'DWR1', b'DWR2'): log(ev='bad_preamble', peer=p.addr, hex=pre.hex()); w.close(); return
         compat = pre[:4] == b'DWR2'
         if compat: await asyncio.wait_for(r.readexactly(1), 15)

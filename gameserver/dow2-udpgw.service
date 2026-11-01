@@ -1,0 +1,13 @@
+[Unit]
+Description=DoW2 battle server over UDP (udp_gateway.py: Relay.dll "UDP to our server" -> battle_relay on this machine)
+After=network-online.target dow2-battle.service
+
+[Service]
+ExecStart=/usr/bin/python3 /srv/dow2battle/udp_gateway.py 47100 127.0.0.1:47100
+Restart=always
+RestartSec=3
+DynamicUser=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
