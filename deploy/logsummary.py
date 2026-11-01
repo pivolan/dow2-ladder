@@ -118,6 +118,19 @@ def summarize(path):
     unknown = []
     for k, v in S.items():
         b = base(k)
+        if b == 'NetProbe.log':                         # the connection check (experiment): per server what passed
+            sess = last_session(v, r'NetProbe \d+:')
+            res = {}
+            for l in sess:
+                m = re.search(r'(Poland|Germany|Moscow)\s+(tcp|udp)/(\d+)\s*(plain|split)?:\s*(.*)', l)
+                if not m: continue
+                srv, proto, port, kind, rest = m.groups()
+                if proto == 'tcp': short = 'OK' if rest.startswith('OK') else ('стоп %s' % re.search(r'at (\d+ KB)', rest).group(1) if 'STALL' in rest else 'нет')
+                else:
+                    e = re.search(r'echo (\d+)/40.*burst (\d+)/200', rest); short = ('эхо %s/40 поток %s/200' % e.groups()) if e else 'нет'
+                res.setdefault(srv, []).append('%s%s/%s %s' % (proto, '(split)' if kind == 'split' else '', port, short))
+            if res: L.append('проверка связи: ' + ' | '.join('%s: %s' % (srv, ', '.join(x)) for srv, x in res.items()))
+            continue
         if b not in starts: continue
         sess = last_session(v, starts[b])
         if b == 'MMFind.log':
