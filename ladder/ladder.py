@@ -545,7 +545,7 @@ def _assign_watchers():  # под MM_LOCK: зрителей — в собира�
                 m['players'][w['steam']] = {'name': w.get('name') or 'Player', 'watcher': True}
                 break
 
-RELAY_ORDER = ['15.220.68.107', '116.202.106.150']   # owner 29.10: Warsaw (AWS) if everyone reaches it, then Germany, else Relic; Moscow off (players report small lags through it)
+RELAY_ORDER = ['15.220.68.107', '116.202.106.150']   # owner 29.10: Warsaw (AWS), Germany, else Relic; Moscow off (players report small lags through it). 01.11: the lowest delay wins, the order only breaks a tie
 
 def _best_relay(steams):
     # Relay 9: every player pinged our game servers (relay_ping {ip: ms}, -1 = no answer). The match goes to the first server
@@ -559,9 +559,12 @@ def _best_relay(steams):
     # Relay.dll connect where the matchmaker says; our servers pass a guest on to the one that has the match)
     picked = [next(iter(x)) for x in pings if len(x) == 1 and next(iter(x.values()), -1) > 0]
     if picked: return picked[0]
-    for h in RELAY_ORDER:
-        if all(x.get(h, -1) > 0 for x in pings): return h
-    return ''
+    # 01.11.2026 (owner): the best server, not the first one - of the servers every player reaches, the one with the lowest
+    # worst delay (TCP connect time to the game port, Relay.dll - not ICMP ping, which many VPNs and providers block);
+    # a tie goes by RELAY_ORDER
+    ok = [h for h in RELAY_ORDER if all(x.get(h, -1) > 0 for x in pings)]
+    if not ok: return ''
+    return min(ok, key=lambda h: (max(x[h] for x in pings), RELAY_ORDER.index(h)))
 
 def _player_view(p):  # под MM_LOCK: что вернуть игроку в poll
     if p['mode'] == WATCH and p['state'] == 'searching':
@@ -618,6 +621,10 @@ def _relay_ping(v):  # {ip: ms} from Relay 9 via MMFind: IPv4 keys, -1..5000
             if re.fullmatch(r'\d{1,3}(\.\d{1,3}){3}', str(k)): out[str(k)] = max(-1, min(5000, x))
     return out or None
 
+def _game(d):
+    # what the player runs (MMFind 0.33+: "vanilla" or "elite-<version>"); older MMFind sends nothing - they all run in Elite
+    return _clean(d.get('game'), 24) or 'elite'
+
 def mm_join(steam, mode, d=None):
     d = d or {}
     steam = str(steam)
@@ -642,7 +649,8 @@ def mm_join(steam, mode, d=None):
         MM[steam] = {'jts': now, 'steam': steam, 'mode': mode, 'rating': rating, 'rd': rd, 'games': games, 'ruiner': _ruin_blocked(steam),
                      'pid': pid, 'name': name or _clean(d.get('name')), 'state': 'searching', 'match': None, 'role': None,
                      'rsrc': rsrc, 'race': _clean(d.get('race'), 32), 'hero': _clean(d.get('hero'), 32), 'maps': maps, 'max_diff': max_diff,
-                     'ts': now, 'seen': now, 'pool': '%s|' % (_clean(d.get('group'), 24) or ''),   # 30.10.2026: no separate pool for the forced own-server mode (gone in Relay 11) - one queue
+                     'ts': now, 'seen': now, 'pool': '%s|%s' % (_clean(d.get('group'), 24) or '', _game(d)),   # one queue per game (01.11.2026: vanilla and Elite never meet); 30.10: no own-server pool
+                     'game': _game(d),
                     
                      'own': bool(d.get('own_server')), 'ping': _relay_ping(d.get('relay_ping')) if d.get('own_server') else None,
                      'group': _clean(d.get('group'), 24) or '', 'compat': bool(d.get('relay_compat')),

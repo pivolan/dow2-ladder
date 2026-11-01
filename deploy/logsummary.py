@@ -90,8 +90,13 @@ def summarize(path):
         except Exception: pass
     L = []
     lv = re.search(r'Elite Launcher (\S+)', head); ev_ = re.search(r'Elite (\d[\d.]*) \((\w+)\)', head)
+    lver, ever = lv.group(1) if lv else '?', ev_.group(1) if ev_ else '?'
+    np_ = re.match(r'NetProbe \d+ · (\w+) · (\w+)', head)        # NetProbe uploads itself, also from the vanilla package
+    if np_ and not lv:
+        lver = 'нет, NetProbe из ' + ('пакета' if np_.group(2) == 'package' else 'лаунчера')
+        ever = 'нет (ванила)' if np_.group(1) == 'vanilla' else 'есть'
     L.append('📋 %s%s%s · лаунчер %s · Elite %s · id %s%s' % (who, ' · ник ' + nick if nick else '', ' · steam ' + steam if steam else '',
-             lv.group(1) if lv else '?', ev_.group(1) if ev_ else '?', rid, ' · повтор (прошлый %s)' % prev['last_rid'] if prev.get('last_rid') else ''))
+             lver, ever, rid, ' · повтор (прошлый %s)' % prev['last_rid'] if prev.get('last_rid') else ''))
     on = re.findall(r'^  (\w+): ON \(latest ([^,]+), installed ([^,)]+)', head, re.M)
     hand = re.findall(r'hand-installed copy: ([^)]+)', head)
     dp = re.search(r'^dow2-patches: (.*)$', head, re.M)
